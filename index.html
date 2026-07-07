@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onepixel — 1인 개발 스튜디오</title>
+  <meta name="description" content="기획부터 출시까지, 1인 개발자 Onepixel이 만드는 앱과 게임들.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e8e8e8;
+      min-height: 100vh;
+      padding: 60px 20px 40px;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 40px; }
+    .logo {
+      width: 14px; height: 14px;
+      margin: 0 auto 18px;
+      background: linear-gradient(135deg, #7c5cff, #ff5c9e);
+      border-radius: 3px;
+    }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+    header p { color: #888; margin-top: 10px; font-size: 1rem; }
+
+    .legend {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 8px; margin: 28px 0 48px;
+    }
+    .legend span {
+      font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #999;
+    }
+
+    .badge {
+      display: inline-block; font-size: 0.75rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+    }
+    .badge.plan   { background: #2a2a2a; color: #999; }
+    .badge.proto  { background: #1d2b4a; color: #7ea6ff; }
+    .badge.closed { background: #4a2f1d; color: #ffab6b; }
+    .badge.live   { background: #1d3a26; color: #6bdb8f; }
+
+    .featured {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 20px;
+      padding: 32px; margin-bottom: 40px;
+    }
+    .featured h2 { font-size: 1.4rem; margin-bottom: 4px; }
+    .featured .sub { color: #777; font-size: 0.85rem; margin-bottom: 14px; }
+    .featured p.story { color: #ccc; line-height: 1.7; font-size: 0.95rem; margin-bottom: 22px; }
+    .cta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .cta {
+      display: inline-block; padding: 10px 18px; border-radius: 10px;
+      font-size: 0.875rem; font-weight: 600; text-decoration: none;
+    }
+    .cta.ready { background: #7c5cff; color: #fff; }
+    .cta.ready:hover { background: #9377ff; }
+    .cta.pending { background: #242424; color: #666; cursor: default; }
+
+    .apps {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .app-card {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 14px;
+      padding: 18px;
+    }
+    .app-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+    .app-card a.link {
+      display: block; margin-top: 10px; font-size: 0.78rem;
+      color: #7ea6ff; text-decoration: none;
+    }
+    .app-card a.link:hover { text-decoration: underline; }
+
+    footer {
+      margin-top: 70px; text-align: center; color: #555; font-size: 0.8rem;
+    }
+    footer a { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo"></div>
+      <h1>Onepixel</h1>
+      <p>1인 개발자가 기획부터 출시까지, 만드는 과정을 그대로 공유합니다</p>
+    </header>
+
+    <div class="legend">
+      <span>⬜ 기획</span>
+      <span>🔵 프로토타입 (내부테스트)</span>
+      <span>🟠 비공개테스트</span>
+      <span>🟢 출시</span>
+    </div>
+
+    <section class="featured">
+      <span class="badge closed">🟠 비공개테스트 준비중</span>
+      <h2>슬라이드 100</h2>
+      <div class="sub">3x3부터 8x8까지, 100개 스테이지 슬라이딩 퍼즐 · Flutter · Android</div>
+      <p class="story">
+        어릴 때 한 번쯤 만져봤을 그 15퍼즐을, 스테이지 100개짜리 모바일 게임으로 다시 만들고 있습니다.
+        엔진부터 스테이지 100개, 6개 언어 번역, 효과음까지 혼자 하나씩 붙여 나가는 중이고,
+        지금은 내부 테스트를 마치고 비공개 테스트(클로즈드 테스트) 오픈을 준비하고 있어요.
+        테스터로 참여해주시는 분들 덕분에 다음 단계로 넘어갈 수 있습니다.
+      </p>
+      <div class="cta-row">
+        <span class="cta pending">테스터로 참여하기 (준비중)</span>
+        <span class="cta pending">응원하기 (준비중)</span>
+      </div>
+    </section>
+
+    <div class="apps">
+      <div class="app-card">
+        <span class="badge closed">🟠 비공개테스트</span>
+        <h3>한눈에 미세먼지</h3>
+        <a class="link" href="https://play.google.com/apps/testing/com.anonymous.dustywipe" target="_blank" rel="noopener">테스트 참여 →</a>
+      </div>
+      <div class="app-card">
+        <span class="badge proto">🔵 프로토타입</span>
+        <h3>한눈에 일정</h3>
+        <a class="link" href="https://play.google.com/apps/internaltest/4701060277425703133" target="_blank" rel="noopener">테스트 참여 →</a>
+      </div>
+      <div class="app-card">
+        <span class="badge proto">🔵 프로토타입</span>
+        <h3>Autoplay</h3>
+        <a class="link" href="https://play.google.com/apps/internaltest/4701744029398544851" target="_blank" rel="noopener">테스트 참여 →</a>
+      </div>
+      <div class="app-card">
+        <span class="badge proto">🔵 프로토타입</span>
+        <h3>NotiSaver</h3>
+        <a class="link" href="https://play.google.com/apps/internaltest/4701512644720882095" target="_blank" rel="noopener">테스트 참여 →</a>
+      </div>
+      <div class="app-card">
+        <span class="badge proto">🔵 프로토타입</span>
+        <h3>스타스웜</h3>
+        <a class="link" href="https://play.google.com/apps/internaltest/4700789151014932952" target="_blank" rel="noopener">테스트 참여 →</a>
+      </div>
+    </div>
+
+    <footer>
+      각 앱의 테스트 설치 링크는 <a href="https://chad0920kim.github.io/testing/" target="_blank" rel="noopener">여기</a>에서도 모아볼 수 있습니다.<br>
+      © 2026 Onepixel.
+    </footer>
+  </div>
+</body>
+</html>
