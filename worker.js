@@ -6,6 +6,12 @@ export default {
       return handleAdmobRevenue(env);
     }
 
+    if (url.pathname === "/api/suggestions") {
+      if (request.method === "POST") return handlePostSuggestion(request, env);
+      if (request.method === "GET") return handleGetSuggestions(env);
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
     return env.ASSETS.fetch(request);
   }
 };
@@ -17,39 +23,21 @@ async function handleAdmobRevenue(env) {
     const start = new Date(today);
     start.setDate(start.getDate() - 30);
 
-    const reportRes = await fetch(
-      `https://admob.googleapis.com/v1/accounts/${env.ADMOB_PUBLISHER_ID}/networkReport:generate`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          reportSpec: {
-            dateRange: {
-              startDate: dateParts(start),
-              endDate: dateParts(today)
-            },
-            metrics: ["ESTIMATED_EARNINGS", "IMPRESSIONS", "CLICKS", "IMPRESSION_CTR"],
-            dimensions: ["APP"],
-            sortConditions: [{ metric: "ESTIMATED_EARNINGS", order: "DESCENDING" }],
-            localizationSettings: { currencyCode: "USD" }
-          }
-        })
-      }
+    const [usdRows, krwRows] = await Promise.all([
+      fetchNetworkReport(env, accessToken, start, today, "USD"),
+      fetchNetworkReport(env, accessToken, start, today, "KRW")
+    ]);
+
+    const krwByApp = new Map(
+      krwRows
+        .filter((chunk) => chunk.row)
+        .map((chunk) => [
+          chunk.row.dimensionValues?.APP?.value,
+          Number(chunk.row.metricValues?.ESTIMATED_EARNINGS?.microsValue || 0) / 1_000_000
+        ])
     );
 
-    if (!reportRes.ok) {
-      const text = await reportRes.text();
-      return new Response(JSON.stringify({ error: "admob_api_error", detail: text }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const rows = await reportRes.json();
-    const apps = rows
+    const apps = usdRows
       .filter((chunk) => chunk.row)
       .map((chunk) => {
         const dims = chunk.row.dimensionValues || {};
@@ -57,6 +45,7 @@ async function handleAdmobRevenue(env) {
         return {
           app: dims.APP?.displayLabel || dims.APP?.value || "알 수 없음",
           earnings: Number(mets.ESTIMATED_EARNINGS?.microsValue || 0) / 1_000_000,
+          earningsKrw: krwByApp.get(dims.APP?.value) || 0,
           impressions: Number(mets.IMPRESSIONS?.integerValue || 0),
           clicks: Number(mets.CLICKS?.integerValue || 0),
           ctr: Number(mets.IMPRESSION_CTR?.doubleValue || 0)
@@ -64,11 +53,13 @@ async function handleAdmobRevenue(env) {
       });
 
     const totalEarnings = apps.reduce((sum, a) => sum + a.earnings, 0);
+    const totalEarningsKrw = apps.reduce((sum, a) => sum + a.earningsKrw, 0);
 
     return new Response(
       JSON.stringify({
         currency: "USD",
         totalEarnings,
+        totalEarningsKrw,
         rangeDays: 30,
         apps
       }),
@@ -80,6 +71,37 @@ async function handleAdmobRevenue(env) {
       headers: { "Content-Type": "application/json" }
     });
   }
+}
+
+async function fetchNetworkReport(env, accessToken, start, end, currencyCode) {
+  const res = await fetch(
+    `https://admob.googleapis.com/v1/accounts/${env.ADMOB_PUBLISHER_ID}/networkReport:generate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        reportSpec: {
+          dateRange: {
+            startDate: dateParts(start),
+            endDate: dateParts(end)
+          },
+          metrics: ["ESTIMATED_EARNINGS", "IMPRESSIONS", "CLICKS", "IMPRESSION_CTR"],
+          dimensions: ["APP"],
+          sortConditions: [{ metric: "ESTIMATED_EARNINGS", order: "DESCENDING" }],
+          localizationSettings: { currencyCode }
+        }
+      })
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`admob_api_error(${currencyCode}): ${await res.text()}`);
+  }
+
+  return res.json();
 }
 
 async function getAccessToken(env) {
@@ -108,4 +130,63 @@ function dateParts(date) {
     month: date.getMonth() + 1,
     day: date.getDate()
   };
+}
+
+const MAX_SUGGESTION_LENGTH = 500;
+
+async function handlePostSuggestion(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "invalid_json" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const text = String(body.text || "").trim();
+  if (!text) {
+    return new Response(JSON.stringify({ error: "empty_text" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  if (text.length > MAX_SUGGESTION_LENGTH) {
+    return new Response(JSON.stringify({ error: "text_too_long", max: MAX_SUGGESTION_LENGTH }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const createdAt = new Date().toISOString();
+  const key = `sugg:${Date.now()}:${crypto.randomUUID()}`;
+  await env.SUGGESTIONS.put(key, JSON.stringify({ text, createdAt }));
+
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+async function handleGetSuggestions(env) {
+  const list = await env.SUGGESTIONS.list({ prefix: "sugg:" });
+  const items = await Promise.all(
+    list.keys.map(async (k) => {
+      const raw = await env.SUGGESTIONS.get(k.name);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const suggestions = items
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  return new Response(JSON.stringify({ suggestions }), {
+    headers: { "Content-Type": "application/json" }
+  });
 }
