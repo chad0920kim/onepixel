@@ -113,6 +113,28 @@
     }
     .revenue-table th:first-child, .revenue-table td:first-child { text-align: left; }
     .revenue-table th { color: #888; font-weight: 600; }
+
+    .suggest-panel {
+      display: none;
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 16px;
+      padding: 24px; margin: -10px auto 40px; max-width: 480px; text-align: left;
+    }
+    .suggest-panel.open { display: block; }
+    .suggest-panel .label { font-size: 0.8rem; color: #888; margin-bottom: 10px; text-align: center; }
+    .suggest-panel textarea {
+      width: 100%; min-height: 90px; resize: vertical;
+      background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 10px;
+      color: #e8e8e8; font-family: inherit; font-size: 0.9rem; padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .suggest-panel textarea:focus { outline: none; border-color: #7c5cff; }
+    .suggest-panel .submit-row { text-align: center; }
+    .suggest-panel button.submit {
+      background: #7c5cff; color: #fff; border: none; font-weight: 600;
+      font-size: 0.875rem; padding: 10px 20px; border-radius: 10px; cursor: pointer;
+    }
+    .suggest-panel button.submit:hover { background: #9377ff; }
+    .suggest-panel .hint { margin-top: 10px; font-size: 0.75rem; color: #777; text-align: center; }
   </style>
 </head>
 <body>
@@ -177,17 +199,27 @@
 
     <nav class="menu">
       <button id="revenueToggle" type="button">💰 매출 현황</button>
+      <button id="suggestToggle" type="button">💡 필요한 앱 제안하기</button>
     </nav>
     <div class="revenue-panel" id="revenuePanel">
       <div class="label">최근 30일 AdMob 매출</div>
       <div class="value" id="revenueValue">-</div>
       <div class="state" id="revenueState"></div>
+      <div class="state" id="revenueValueKrw"></div>
       <table class="revenue-table" id="revenueTable" style="display:none">
         <thead>
-          <tr><th>앱</th><th>수익</th><th>노출수</th><th>클릭</th><th>CTR</th></tr>
+          <tr><th>앱</th><th>수익 (USD / KRW)</th><th>노출수</th><th>클릭</th><th>CTR</th></tr>
         </thead>
         <tbody id="revenueTableBody"></tbody>
       </table>
+    </div>
+    <div class="suggest-panel" id="suggestPanel">
+      <div class="label">이런 앱/게임이 있으면 좋겠다 싶은 게 있으신가요? 자유롭게 적어주세요.</div>
+      <textarea id="suggestText" placeholder="예: 매일 아침 날씨랑 오늘 할 일을 같이 보여주는 위젯 앱이 있으면 좋겠어요"></textarea>
+      <div class="submit-row">
+        <button class="submit" id="suggestSubmit" type="button">이메일로 보내기</button>
+      </div>
+      <div class="hint">* 버튼을 누르면 기본 이메일 앱이 열리고, 내용이 미리 채워집니다. 보내기는 직접 눌러주셔야 해요.</div>
     </div>
 
     <footer>
@@ -201,6 +233,7 @@
     const revenuePanel = document.getElementById('revenuePanel');
     const revenueValue = document.getElementById('revenueValue');
     const revenueState = document.getElementById('revenueState');
+    const revenueValueKrw = document.getElementById('revenueValueKrw');
     const revenueTable = document.getElementById('revenueTable');
     const revenueTableBody = document.getElementById('revenueTableBody');
     let loaded = false;
@@ -215,6 +248,7 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'unknown_error');
           revenueValue.textContent = `$${data.totalEarnings.toFixed(2)}`;
+          revenueValueKrw.textContent = `₩${Math.round(data.totalEarningsKrw).toLocaleString()}`;
           revenueState.textContent = '';
           const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -222,7 +256,7 @@
           revenueTableBody.innerHTML = data.apps.map((a) => `
             <tr>
               <td>${escapeHtml(a.app)}</td>
-              <td>$${a.earnings.toFixed(2)}</td>
+              <td>$${a.earnings.toFixed(2)} / ₩${Math.round(a.earningsKrw).toLocaleString()}</td>
               <td>${a.impressions.toLocaleString()}</td>
               <td>${a.clicks.toLocaleString()}</td>
               <td>${(a.ctr * 100).toFixed(2)}%</td>
@@ -235,6 +269,27 @@
           revenueState.textContent = '불러오지 못했습니다';
         }
       }
+    });
+
+    const suggestToggle = document.getElementById('suggestToggle');
+    const suggestPanel = document.getElementById('suggestPanel');
+    const suggestText = document.getElementById('suggestText');
+    const suggestSubmit = document.getElementById('suggestSubmit');
+
+    suggestToggle.addEventListener('click', () => {
+      suggestPanel.classList.toggle('open');
+      if (suggestPanel.classList.contains('open')) suggestText.focus();
+    });
+
+    suggestSubmit.addEventListener('click', () => {
+      const text = suggestText.value.trim();
+      if (!text) {
+        suggestText.focus();
+        return;
+      }
+      const subject = encodeURIComponent('[Onepixel] 앱 제안');
+      const body = encodeURIComponent(text);
+      window.location.href = `mailto:kyh0920@gmail.com?subject=${subject}&body=${body}`;
     });
   </script>
 </body>
