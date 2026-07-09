@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://onepixel.kyh0920.workers.dev/sitemap.xml
