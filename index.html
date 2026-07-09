@@ -87,7 +87,7 @@
     footer a { color: #888; }
 
     nav.menu {
-      display: flex; justify-content: center; margin-bottom: 30px;
+      display: flex; justify-content: center; margin: 50px 0 20px;
     }
     nav.menu button {
       background: #161616; border: 1px solid #2a2a2a; color: #ccc;
@@ -120,15 +120,6 @@
       <span>🔵 프로토타입 (내부테스트)</span>
       <span>🟠 비공개테스트</span>
       <span>🟢 출시</span>
-    </div>
-
-    <nav class="menu">
-      <button id="revenueToggle" type="button">💰 매출 현황</button>
-    </nav>
-    <div class="revenue-panel" id="revenuePanel">
-      <div class="label">최근 30일 AdMob 매출</div>
-      <div class="value" id="revenueValue">-</div>
-      <div class="state" id="revenueState"></div>
     </div>
 
     <section class="featured">
@@ -174,6 +165,15 @@
         <h3>스타스웜</h3>
         <a class="link" href="https://play.google.com/apps/internaltest/4700789151014932952" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
+    </div>
+
+    <nav class="menu">
+      <button id="revenueToggle" type="button">💰 매출 현황</button>
+    </nav>
+    <div class="revenue-panel" id="revenuePanel">
+      <div class="label">최근 30일 AdMob 매출</div>
+      <div class="value" id="revenueValue">-</div>
+      <div class="state" id="revenueState"></div>
     </div>
 
     <footer>
