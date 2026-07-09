@@ -6,3 +6,6 @@ compatibility_date = "2024-09-23"
 directory = "."
 binding = "ASSETS"
 not_found_handling = "404-page"
+
+[vars]
+ADMOB_PUBLISHER_ID = "pub-4835070281978073"
