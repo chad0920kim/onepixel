@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>필요한 앱 제안하기 — Onepixel</title>
+  <meta name="description" content="어떤 앱/게임이 있으면 좋을지 자유롭게 제안해주세요.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e8e8e8;
+      min-height: 100vh;
+      padding: 60px 20px 40px;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+
+    .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+    .back-link { color: #666; font-size: 0.85rem; text-decoration: none; }
+    .back-link:hover { color: #999; }
+
+    header { text-align: center; margin-bottom: 36px; }
+    header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; }
+    header p { color: #888; font-size: 0.95rem; }
+
+    .composer {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 16px;
+      padding: 28px; margin-bottom: 40px;
+    }
+    .composer textarea {
+      width: 100%; min-height: 120px; resize: vertical;
+      background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 10px;
+      color: #e8e8e8; font-family: inherit; font-size: 1rem; padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .composer textarea:focus { outline: none; border-color: #7c5cff; }
+    .composer .submit-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .composer button.submit {
+      background: #7c5cff; color: #fff; border: none; font-weight: 600;
+      font-size: 0.95rem; padding: 12px 26px; border-radius: 10px; cursor: pointer;
+    }
+    .composer button.submit:hover { background: #9377ff; }
+    .composer button.submit:disabled { background: #2a2a2a; color: #666; cursor: default; }
+    .hint { font-size: 0.78rem; color: #777; }
+
+    .board-title { font-size: 1rem; font-weight: 600; color: #ccc; margin-bottom: 16px; }
+    .suggest-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .suggest-list li {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 12px;
+      padding: 18px 20px; font-size: 0.95rem; color: #ddd; line-height: 1.7;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .suggest-list .date { display: block; font-size: 0.75rem; color: #666; margin-top: 8px; }
+    .suggest-list .empty {
+      text-align: center; color: #666; padding: 30px 0; background: none; border: none;
+    }
+
+    footer { margin-top: 60px; text-align: center; color: #555; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-row">
+      <a class="back-link" href="./">← Onepixel 홈으로</a>
+    </div>
+
+    <header>
+      <h1>💡 필요한 앱 제안하기</h1>
+      <p>어떤 앱이나 게임이 있으면 좋을지 자유롭게 남겨주세요. 다른 분들이 남긴 제안도 아래에서 볼 수 있어요.</p>
+    </header>
+
+    <section class="composer">
+      <textarea id="suggestText" maxlength="500" placeholder="예: 매일 아침 날씨랑 오늘 할 일을 같이 보여주는 위젯 앱이 있으면 좋겠어요"></textarea>
+      <input type="text" id="suggestWebsite" name="website" autocomplete="off" tabindex="-1" style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" aria-hidden="true">
+      <div class="submit-row">
+        <span class="hint" id="suggestHint">* 등록하신 제안은 아래 게시판에 바로 공개됩니다. 개인정보/링크는 적지 말아주세요.</span>
+        <button class="submit" id="suggestSubmit" type="button">게시판에 올리기</button>
+      </div>
+    </section>
+
+    <div class="board-title">제안 목록</div>
+    <ul class="suggest-list" id="suggestList">
+      <li class="empty">불러오는 중...</li>
+    </ul>
+
+    <footer>© 2026 Onepixel.</footer>
+  </div>
+
+  <script>
+    const suggestText = document.getElementById('suggestText');
+    const suggestSubmit = document.getElementById('suggestSubmit');
+    const suggestHint = document.getElementById('suggestHint');
+    const suggestList = document.getElementById('suggestList');
+    const defaultHint = suggestHint.textContent;
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
+    async function loadSuggestions() {
+      try {
+        const res = await fetch('/api/suggestions');
+        const data = await res.json();
+        if (!data.suggestions || !data.suggestions.length) {
+          suggestList.innerHTML = '<li class="empty">아직 등록된 제안이 없습니다. 첫 제안을 남겨보세요!</li>';
+          return;
+        }
+        suggestList.innerHTML = data.suggestions.map((s) => {
+          const date = new Date(s.createdAt);
+          const dateStr = isNaN(date) ? '' : date.toLocaleString('ko-KR');
+          return `<li>${escapeHtml(s.text)}<span class="date">${dateStr}</span></li>`;
+        }).join('');
+      } catch (err) {
+        suggestList.innerHTML = '<li class="empty">불러오지 못했습니다.</li>';
+      }
+    }
+
+    const suggestWebsite = document.getElementById('suggestWebsite');
+    const ERROR_MESSAGES = {
+      links_not_allowed: '링크(URL)는 포함할 수 없어요. 링크를 빼고 다시 적어주세요.',
+      text_too_long: '500자 이내로 줄여서 다시 적어주세요.',
+      rate_limited: '너무 자주 등록하셨어요. 잠시 후 다시 시도해주세요.',
+      empty_text: '내용을 입력해주세요.'
+    };
+
+    suggestSubmit.addEventListener('click', async () => {
+      const text = suggestText.value.trim();
+      if (!text) {
+        suggestText.focus();
+        return;
+      }
+      suggestSubmit.disabled = true;
+      suggestHint.textContent = '등록 중...';
+      try {
+        const res = await fetch('/api/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, website: suggestWebsite.value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          suggestHint.textContent = ERROR_MESSAGES[data.error] || '등록에 실패했습니다. 잠시 후 다시 시도해주세요.';
+          return;
+        }
+        suggestText.value = '';
+        suggestHint.textContent = defaultHint;
+        await loadSuggestions();
+      } catch (err) {
+        suggestHint.textContent = '등록에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      } finally {
+        suggestSubmit.disabled = false;
+      }
+    });
+
+    loadSuggestions();
+  </script>
+</body>
+</html>

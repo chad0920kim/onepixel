@@ -3,3 +3,4 @@ worker.js
 .git
 .assetsignore
 admob/
+.wrangler/

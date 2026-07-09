@@ -133,6 +133,9 @@ function dateParts(date) {
 }
 
 const MAX_SUGGESTION_LENGTH = 500;
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hour
+const URL_PATTERN = /https?:\/\/|www\.|[a-z0-9-]+\.(com|net|org|io|co|xyz|top|shop|biz|info)\b/i;
 
 async function handlePostSuggestion(request, env) {
   let body;
@@ -141,6 +144,14 @@ async function handlePostSuggestion(request, env) {
   } catch {
     return new Response(JSON.stringify({ error: "invalid_json" }), {
       status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Honeypot: a real user never fills this hidden field; bots that
+  // auto-fill every input on the form do.
+  if (String(body.website || "").trim()) {
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" }
     });
   }
@@ -158,14 +169,41 @@ async function handlePostSuggestion(request, env) {
       headers: { "Content-Type": "application/json" }
     });
   }
+  if (URL_PATTERN.test(text)) {
+    return new Response(JSON.stringify({ error: "links_not_allowed" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const rateLimited = await isRateLimited(env, ip);
+  if (rateLimited) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 
   const createdAt = new Date().toISOString();
   const key = `sugg:${Date.now()}:${crypto.randomUUID()}`;
   await env.SUGGESTIONS.put(key, JSON.stringify({ text, createdAt }));
+  await bumpRateLimit(env, ip);
 
   return new Response(JSON.stringify({ ok: true }), {
     headers: { "Content-Type": "application/json" }
   });
+}
+
+async function isRateLimited(env, ip) {
+  const count = Number((await env.SUGGESTIONS.get(`rl:${ip}`)) || 0);
+  return count >= RATE_LIMIT_MAX;
+}
+
+async function bumpRateLimit(env, ip) {
+  const rlKey = `rl:${ip}`;
+  const count = Number((await env.SUGGESTIONS.get(rlKey)) || 0);
+  await env.SUGGESTIONS.put(rlKey, String(count + 1), { expirationTtl: RATE_LIMIT_WINDOW_SECONDS });
 }
 
 async function handleGetSuggestions(env) {

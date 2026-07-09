@@ -95,6 +95,12 @@
       border-radius: 20px; cursor: pointer;
     }
     nav.menu button:hover { border-color: #7c5cff; color: #fff; }
+    nav.menu a {
+      background: #161616; border: 1px solid #2a2a2a; color: #ccc;
+      font-size: 0.85rem; font-weight: 600; padding: 8px 18px;
+      border-radius: 20px; text-decoration: none; display: inline-block;
+    }
+    nav.menu a:hover { border-color: #7c5cff; color: #fff; }
 
     .revenue-panel {
       display: none;
@@ -113,36 +119,6 @@
     }
     .revenue-table th:first-child, .revenue-table td:first-child { text-align: left; }
     .revenue-table th { color: #888; font-weight: 600; }
-
-    .suggest-panel {
-      display: none;
-      background: #161616; border: 1px solid #2a2a2a; border-radius: 16px;
-      padding: 24px; margin: -10px auto 40px; max-width: 480px; text-align: left;
-    }
-    .suggest-panel.open { display: block; }
-    .suggest-panel .label { font-size: 0.8rem; color: #888; margin-bottom: 10px; text-align: center; }
-    .suggest-panel textarea {
-      width: 100%; min-height: 90px; resize: vertical;
-      background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 10px;
-      color: #e8e8e8; font-family: inherit; font-size: 0.9rem; padding: 10px 12px;
-      margin-bottom: 12px;
-    }
-    .suggest-panel textarea:focus { outline: none; border-color: #7c5cff; }
-    .suggest-panel .submit-row { text-align: center; }
-    .suggest-panel button.submit {
-      background: #7c5cff; color: #fff; border: none; font-weight: 600;
-      font-size: 0.875rem; padding: 10px 20px; border-radius: 10px; cursor: pointer;
-    }
-    .suggest-panel button.submit:hover { background: #9377ff; }
-    .suggest-panel .hint { margin-top: 10px; font-size: 0.75rem; color: #777; text-align: center; }
-    .suggest-list { list-style: none; margin-top: 20px; border-top: 1px solid #2a2a2a; padding-top: 14px; }
-    .suggest-list li {
-      font-size: 0.85rem; color: #ccc; padding: 10px 0; border-bottom: 1px solid #202020;
-      line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-    }
-    .suggest-list li:last-child { border-bottom: none; }
-    .suggest-list .date { display: block; font-size: 0.72rem; color: #666; margin-top: 4px; }
-    .suggest-list .empty { color: #666; text-align: center; padding: 10px 0; }
   </style>
 </head>
 <body>
@@ -207,7 +183,7 @@
 
     <nav class="menu">
       <button id="revenueToggle" type="button">💰 매출 현황</button>
-      <button id="suggestToggle" type="button">💡 필요한 앱 제안하기</button>
+      <a href="suggest.html">💡 필요한 앱 제안하기</a>
     </nav>
     <div class="revenue-panel" id="revenuePanel">
       <div class="label">최근 30일 AdMob 매출</div>
@@ -220,15 +196,6 @@
         </thead>
         <tbody id="revenueTableBody"></tbody>
       </table>
-    </div>
-    <div class="suggest-panel" id="suggestPanel">
-      <div class="label">이런 앱/게임이 있으면 좋겠다 싶은 게 있으신가요? 자유롭게 적어주세요.</div>
-      <textarea id="suggestText" maxlength="500" placeholder="예: 매일 아침 날씨랑 오늘 할 일을 같이 보여주는 위젯 앱이 있으면 좋겠어요"></textarea>
-      <div class="submit-row">
-        <button class="submit" id="suggestSubmit" type="button">게시판에 올리기</button>
-      </div>
-      <div class="hint" id="suggestHint">* 등록하신 제안은 아래 게시판에 바로 공개됩니다. 개인정보는 적지 말아주세요.</div>
-      <ul class="suggest-list" id="suggestList"></ul>
     </div>
 
     <footer>
@@ -277,72 +244,6 @@
           revenueValue.textContent = '-';
           revenueState.textContent = '불러오지 못했습니다';
         }
-      }
-    });
-
-    const suggestToggle = document.getElementById('suggestToggle');
-    const suggestPanel = document.getElementById('suggestPanel');
-    const suggestText = document.getElementById('suggestText');
-    const suggestSubmit = document.getElementById('suggestSubmit');
-    const suggestHint = document.getElementById('suggestHint');
-    const suggestList = document.getElementById('suggestList');
-    const escapeHtmlSuggest = (s) => String(s).replace(/[&<>"']/g, (c) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
-    let suggestionsLoaded = false;
-
-    async function loadSuggestions() {
-      suggestList.innerHTML = '<li class="empty">불러오는 중...</li>';
-      try {
-        const res = await fetch('/api/suggestions');
-        const data = await res.json();
-        if (!data.suggestions || !data.suggestions.length) {
-          suggestList.innerHTML = '<li class="empty">아직 등록된 제안이 없습니다. 첫 제안을 남겨보세요!</li>';
-          return;
-        }
-        suggestList.innerHTML = data.suggestions.map((s) => {
-          const date = new Date(s.createdAt);
-          const dateStr = isNaN(date) ? '' : date.toLocaleString('ko-KR');
-          return `<li>${escapeHtmlSuggest(s.text)}<span class="date">${dateStr}</span></li>`;
-        }).join('');
-      } catch (err) {
-        suggestList.innerHTML = '<li class="empty">불러오지 못했습니다.</li>';
-      }
-    }
-
-    suggestToggle.addEventListener('click', () => {
-      suggestPanel.classList.toggle('open');
-      if (suggestPanel.classList.contains('open')) {
-        suggestText.focus();
-        if (!suggestionsLoaded) {
-          suggestionsLoaded = true;
-          loadSuggestions();
-        }
-      }
-    });
-
-    suggestSubmit.addEventListener('click', async () => {
-      const text = suggestText.value.trim();
-      if (!text) {
-        suggestText.focus();
-        return;
-      }
-      suggestSubmit.disabled = true;
-      suggestHint.textContent = '등록 중...';
-      try {
-        const res = await fetch('/api/suggestions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
-        if (!res.ok) throw new Error('failed');
-        suggestText.value = '';
-        suggestHint.textContent = '* 등록하신 제안은 아래 게시판에 바로 공개됩니다. 개인정보는 적지 말아주세요.';
-        await loadSuggestions();
-      } catch (err) {
-        suggestHint.textContent = '등록에 실패했습니다. 잠시 후 다시 시도해주세요.';
-      } finally {
-        suggestSubmit.disabled = false;
       }
     });
   </script>
