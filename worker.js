@@ -31,8 +31,9 @@ async function handleAdmobRevenue(env) {
               startDate: dateParts(start),
               endDate: dateParts(today)
             },
-            metrics: ["ESTIMATED_EARNINGS"],
-            dimensions: ["DATE"],
+            metrics: ["ESTIMATED_EARNINGS", "IMPRESSIONS", "CLICKS", "IMPRESSION_CTR"],
+            dimensions: ["APP"],
+            sortConditions: [{ metric: "ESTIMATED_EARNINGS", order: "DESCENDING" }],
             localizationSettings: { currencyCode: "USD" }
           }
         })
@@ -48,15 +49,28 @@ async function handleAdmobRevenue(env) {
     }
 
     const rows = await reportRes.json();
-    const totalMicros = rows
-      .filter((row) => row.row)
-      .reduce((sum, row) => sum + Number(row.row.metricValues?.ESTIMATED_EARNINGS?.microsValue || 0), 0);
+    const apps = rows
+      .filter((chunk) => chunk.row)
+      .map((chunk) => {
+        const dims = chunk.row.dimensionValues || {};
+        const mets = chunk.row.metricValues || {};
+        return {
+          app: dims.APP?.displayLabel || dims.APP?.value || "알 수 없음",
+          earnings: Number(mets.ESTIMATED_EARNINGS?.microsValue || 0) / 1_000_000,
+          impressions: Number(mets.IMPRESSIONS?.integerValue || 0),
+          clicks: Number(mets.CLICKS?.integerValue || 0),
+          ctr: Number(mets.IMPRESSION_CTR?.doubleValue || 0)
+        };
+      });
+
+    const totalEarnings = apps.reduce((sum, a) => sum + a.earnings, 0);
 
     return new Response(
       JSON.stringify({
         currency: "USD",
-        totalEarnings: totalMicros / 1_000_000,
-        rangeDays: 30
+        totalEarnings,
+        rangeDays: 30,
+        apps
       }),
       { headers: { "Content-Type": "application/json" } }
     );
