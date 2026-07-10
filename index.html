@@ -66,21 +66,6 @@
     .cta.pending { background: #242424; color: #666; cursor: default; }
     .featured .note { margin-top: 14px; font-size: 0.78rem; color: #777; }
 
-    .apps {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-    }
-    .app-card {
-      background: #161616; border: 1px solid #2a2a2a; border-radius: 14px;
-      padding: 18px;
-    }
-    .app-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
-    .app-card a.link {
-      display: block; margin-top: 10px; font-size: 0.78rem;
-      color: #7ea6ff; text-decoration: none;
-    }
-    .app-card a.link:hover { text-decoration: underline; }
-
     footer {
       margin-top: 70px; text-align: center; color: #555; font-size: 0.8rem;
     }
@@ -153,33 +138,70 @@
       <p class="note">* 그룹에 가입하신 뒤 ②번을 눌러야 설치가 가능합니다. 순서를 지켜주세요. 응원하기는 카카오페이 앱이 설치된 모바일에서 열어주세요.</p>
     </section>
 
-    <div class="apps">
-      <div class="app-card">
-        <span class="badge closed">🟠 비공개테스트</span>
-        <h3>한눈에 미세먼지</h3>
-        <a class="link" href="https://play.google.com/apps/testing/com.anonymous.dustywipe" target="_blank" rel="noopener">테스트 참여 →</a>
+    <section class="featured">
+      <span class="badge closed">🟠 비공개테스트 진행중</span>
+      <h2>한눈에 미세먼지</h2>
+      <div class="sub">내 위치 기준 실시간 미세먼지 정보 · Expo/React Native · Android</div>
+      <p class="story">
+        한눈에 미세먼지는 내 위치를 기준으로 실시간 미세먼지·초미세먼지·대기질 정보를 확인할 수 있는 앱입니다.
+        잠금화면과 알림을 통해 앱을 열지 않아도 오늘의 대기질을 바로 볼 수 있어요. 지금 비공개 테스트가 진행 중입니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://play.google.com/apps/testing/com.anonymous.dustywipe" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
-      <div class="app-card">
-        <span class="badge proto">🔵 프로토타입</span>
-        <h3>한눈에 일정</h3>
-        <a class="link" href="https://play.google.com/apps/internaltest/4701060277425703133" target="_blank" rel="noopener">테스트 참여 →</a>
+    </section>
+
+    <section class="featured">
+      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <h2>한눈에 일정</h2>
+      <div class="sub">잠금화면에서 바로 보는 오늘의 일정 · Flutter · Android</div>
+      <p class="story">
+        한눈에 일정은 잠금화면을 손가락으로 지우면 오늘의 캘린더 일정이 나타나는 위젯 앱입니다.
+        원하는 시간에 다정한 음성으로 하루 일정을 읽어주는 알람 기능도 함께 제공해요. 지금 내부 테스트 단계입니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701060277425703133" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
-      <div class="app-card">
-        <span class="badge proto">🔵 프로토타입</span>
-        <h3>Autoplay</h3>
-        <a class="link" href="https://play.google.com/apps/internaltest/4701744029398544851" target="_blank" rel="noopener">테스트 참여 →</a>
+    </section>
+
+    <section class="featured">
+      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <h2>Autoplay</h2>
+      <div class="sub">블루투스 연결 시 음악 앱 자동 실행 · Flutter · Android</div>
+      <p class="story">
+        Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는
+        트리거 앱입니다. 지금 내부 테스트 단계입니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701744029398544851" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
-      <div class="app-card">
-        <span class="badge proto">🔵 프로토타입</span>
-        <h3>NotiSaver</h3>
-        <a class="link" href="https://play.google.com/apps/internaltest/4701512644720882095" target="_blank" rel="noopener">테스트 참여 →</a>
+    </section>
+
+    <section class="featured">
+      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <h2>NotiSaver</h2>
+      <div class="sub">놓친 알림을 보관하는 알림함 · Flutter · Android</div>
+      <p class="story">
+        NotiSaver는 놓친 알림을 저장해두었다가 언제든 다시 확인할 수 있는 알림 보관함 앱입니다.
+        사용자가 선택한 앱(카카오톡·왓츠앱 등)의 알림만 저장하고, 생체인증으로 잠글 수 있어요. 지금 내부 테스트 단계입니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701512644720882095" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
-      <div class="app-card">
-        <span class="badge proto">🔵 프로토타입</span>
-        <h3>스타스웜</h3>
-        <a class="link" href="https://play.google.com/apps/internaltest/4700789151014932952" target="_blank" rel="noopener">테스트 참여 →</a>
+    </section>
+
+    <section class="featured">
+      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <h2>스타스웜</h2>
+      <div class="sub">우주선 슈팅 게임 · Flutter · Android</div>
+      <p class="story">
+        스타스웜은 우주선을 조종해 몰려오는 적을 격파하는 클래식 슈팅 게임입니다.
+        내 얼굴 사진을 등록해서 우주선에 나만의 캐릭터를 꾸밀 수 있는 기능도 있어요. 지금 내부 테스트 단계입니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://play.google.com/apps/internaltest/4700789151014932952" target="_blank" rel="noopener">테스트 참여 →</a>
       </div>
-    </div>
+    </section>
 
     <nav class="menu">
       <button id="revenueToggle" type="button">💰 매출 현황</button>
