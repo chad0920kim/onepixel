@@ -1,6 +1,10 @@
 wrangler.toml
+wrangler.pages.toml
 worker.js
+_worker.js
 .git
+.gitignore
 .assetsignore
 admob/
 .wrangler/
+.DS_Store

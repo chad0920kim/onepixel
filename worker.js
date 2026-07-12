@@ -1,6 +1,16 @@
+// Static-asset ignore files (.assetsignore / .gitignore) aren't reliably
+// honored by every deploy target (Pages in particular ignores both), so
+// sensitive/internal paths are denied here in code instead — this is the
+// one place both the Workers and Pages (_worker.js) deployments share.
+const DENIED_PATH_PATTERN = /^\/(\.|admob\/|wrangler(\.pages)?\.toml$|_?worker\.js$)/;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (DENIED_PATH_PATTERN.test(url.pathname)) {
+      return new Response("Not found", { status: 404 });
+    }
 
     if (url.pathname === "/api/admob-revenue") {
       return handleAdmobRevenue(env);
