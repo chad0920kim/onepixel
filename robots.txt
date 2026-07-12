@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
+User-agent: Yeti
+Allow: /
+
 Sitemap: https://onepixel.kyh0920.workers.dev/sitemap.xml
