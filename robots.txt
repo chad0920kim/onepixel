@@ -4,4 +4,4 @@ Allow: /
 User-agent: Yeti
 Allow: /
 
-Sitemap: https://onepixel.pages.dev/sitemap.xml
+Sitemap: https://onepixel.yhchad.com/sitemap.xml

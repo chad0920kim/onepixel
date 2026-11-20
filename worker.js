@@ -16,6 +16,16 @@ export default {
       return handleAdmobRevenue(env);
     }
 
+    if (url.pathname === "/api/autoreply/redeem" && request.method === "POST") {
+      return handleAutoreplyRedeem(request, env);
+    }
+    if (url.pathname === "/api/autoreply/unlock" && request.method === "GET") {
+      return handleAutoreplyUnlock(url, request, env);
+    }
+    if (url.pathname === "/api/autoreply/log" && request.method === "POST") {
+      return handleAutoreplyLog(request, env);
+    }
+
     if (url.pathname === "/api/suggestions") {
       if (request.method === "POST") return handlePostSuggestion(request, env);
       if (request.method === "GET") return handleGetSuggestions(env);
@@ -237,4 +247,87 @@ async function handleGetSuggestions(env) {
   return new Response(JSON.stringify({ suggestions }), {
     headers: { "Content-Type": "application/json" }
   });
+}
+
+// ---- 자동답장 앱 사용 이력 수집 ----
+// 번호·문구 등 개인정보는 받지 않는다. 설치 ID(무작위)·시각·이벤트 코드만 저장한다.
+// KV 쓰기 한도를 아끼려고 설치 ID+날짜 별 하나의 키에 이벤트 목록을 이어 붙인다.
+const AR_TOKEN = "REDACTED";
+const AR_MAX_BODY = 8192;
+const AR_MAX_EVENTS_PER_DAY = 400;
+const AR_TTL_SECONDS = 60 * 60 * 24 * 90;
+
+async function handleAutoreplyLog(request, env) {
+  if (request.headers.get("x-ar-token") !== AR_TOKEN) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  const raw = await request.text();
+  if (raw.length > AR_MAX_BODY) return new Response("Too large", { status: 413 });
+  let body;
+  try { body = JSON.parse(raw); } catch { return new Response("Bad request", { status: 400 }); }
+
+  const installId = String(body.i || "").slice(0, 40);
+  if (!/^[A-Za-z0-9-]{8,40}$/.test(installId)) return new Response("Bad request", { status: 400 });
+  const events = (Array.isArray(body.e) ? body.e : []).slice(0, 100).map((ev) => ({
+    t: Number(ev.t) || Date.now(),
+    k: String(ev.k || "").slice(0, 40),
+    c: String(ev.c || "").slice(0, 80)
+  })).filter((ev) => ev.k);
+  if (!events.length) return new Response(JSON.stringify({ ok: true, n: 0 }), { headers: { "Content-Type": "application/json" } });
+
+  const day = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // KST 날짜
+  const key = `ar:${day}:${installId}`;
+  const prev = await env.SUGGESTIONS.get(key, "json");
+  const meta = {
+    v: String(body.v || "").slice(0, 20),
+    d: String(body.d || "").slice(0, 40),
+    s: Number(body.s) || 0
+  };
+  const merged = { ...meta, events: [...((prev && prev.events) || []), ...events].slice(-AR_MAX_EVENTS_PER_DAY) };
+  await env.SUGGESTIONS.put(key, JSON.stringify(merged), { expirationTtl: AR_TTL_SECONDS });
+  return new Response(JSON.stringify({ ok: true, n: events.length }), { headers: { "Content-Type": "application/json" } });
+}
+
+// 무제한 승인 확인: 설치 ID 가 KV(arunlock:<id>)에 등록돼 있으면 무료 건수 제한을 풀어 준다.
+// 등록은 운영자가 wrangler kv key put 으로만 한다(앱에서 스스로 풀 수 없다).
+async function handleAutoreplyUnlock(url, request, env) {
+  if (request.headers.get("x-ar-token") !== AR_TOKEN) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  const id = String(url.searchParams.get("i") || "");
+  if (!/^[A-Za-z0-9-]{8,40}$/.test(id)) return new Response("Bad request", { status: 400 });
+  const rec = await env.SUGGESTIONS.get(`arunlock:${id}`, "json");
+  const unlimited = !!(rec && rec.unlimited === true);
+  return new Response(JSON.stringify({ ok: true, unlimited, checkedAt: Date.now() }), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+  });
+}
+
+// 해제 코드 입력: 운영자가 만든 코드(arcode:<코드>)를 입력하면 그 설치 ID 가 무제한으로 등록된다.
+// 코드는 사용 횟수(maxUses)가 있고, 누가(이메일) 받은 코드인지 기록한다. 코드 오입력은 느리게 막는다.
+async function handleAutoreplyRedeem(request, env) {
+  if (request.headers.get("x-ar-token") !== AR_TOKEN) return new Response("Forbidden", { status: 403 });
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return new Response("Bad request", { status: 400 }); }
+  const id = String(body.i || "");
+  const code = String(body.code || "").trim().toUpperCase();
+  if (!/^[A-Za-z0-9-]{8,40}$/.test(id) || !/^AR-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+    return new Response(JSON.stringify({ ok: false, error: "invalid" }), { status: 400, headers: { "Content-Type": "application/json" } });
+  }
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const rlKey = `arrl:${ip}`;
+  const tries = Number((await env.SUGGESTIONS.get(rlKey)) || 0);
+  if (tries >= 10) return new Response(JSON.stringify({ ok: false, error: "too_many" }), { status: 429, headers: { "Content-Type": "application/json" } });
+  await env.SUGGESTIONS.put(rlKey, String(tries + 1), { expirationTtl: 3600 });
+
+  const rec = await env.SUGGESTIONS.get(`arcode:${code}`, "json");
+  if (!rec) return new Response(JSON.stringify({ ok: false, error: "wrong_code" }), { status: 404, headers: { "Content-Type": "application/json" } });
+  const used = Array.isArray(rec.used) ? rec.used : [];
+  if (!used.includes(id)) {
+    if (used.length >= (rec.maxUses || 1)) return new Response(JSON.stringify({ ok: false, error: "used_up" }), { status: 409, headers: { "Content-Type": "application/json" } });
+    used.push(id);
+    await env.SUGGESTIONS.put(`arcode:${code}`, JSON.stringify({ ...rec, used }));
+    await env.SUGGESTIONS.put(`arunlock:${id}`, JSON.stringify({ unlimited: true, email: rec.email || "", code: code.slice(0, 7) + "…", at: Date.now() }));
+  }
+  return new Response(JSON.stringify({ ok: true, unlimited: true }), { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>자동답장 테스트 설치 — Onepixel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e8e8e8; padding: 48px 20px; line-height: 1.7; }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    a.back { color: #888; font-size: .9rem; text-decoration: none; }
+    h1 { font-size: 1.8rem; margin: 18px 0 6px; letter-spacing: -.5px; }
+    .sub { color: #999; margin-bottom: 28px; }
+    .dl { display: block; text-align: center; background: linear-gradient(135deg,#7c5cff,#ff5c9e); color: #fff; font-weight: 700; padding: 16px; border-radius: 12px; text-decoration: none; font-size: 1.05rem; }
+    .meta { color: #888; font-size: .85rem; text-align: center; margin: 10px 0 30px; }
+    h2 { font-size: 1.05rem; margin: 30px 0 10px; color: #f0f0f0; }
+    ol, ul { padding-left: 1.3rem; } li { margin-bottom: 6px; }
+    .note { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px 16px; color: #bbb; font-size: .92rem; }
+    code { background: #222; padding: 1px 6px; border-radius: 4px; font-size: .9em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">← Onepixel</a>
+    <h1>자동답장 <span style="font-size:.9rem;color:#888">테스트 버전 0.4.0</span></h1>
+    <p class="sub">부재중 전화가 오면 미리 정한 문구를 자동으로 문자로 보내 주는 앱입니다. 개인 테스트용 설치 파일(APK)입니다.</p>
+
+    <a class="dl" href="/autoreply/autoreply-v0.4.0.apk" download>APK 내려받기 (2.7MB)</a>
+    <div class="meta">Android 10 이상 · 갤럭시 S9 / S21 / Z Flip7 등</div>
+
+    <h2>0.4.0에서 달라진 점</h2>
+    <ul>
+      <li>화면 전체를 다듬었습니다(상태 카드, 준비 항목 목록, 문구 미리보기, 다크 모드).</li>
+      <li>작동 시간의 시작·종료가 좁은 화면에서도 깨지지 않습니다.</li>
+      <li>삼성 배터리 설정은 "확인 필요"로 표시되며, 설정하신 뒤 "설정했어요"를 누르면 완료로 바뀝니다.</li>
+      <li>"나에게 테스트 발송" 버튼이 생겼습니다(무료 건수에서 차감되지 않습니다).</li>
+      <li>기본 문구가 수신전용 번호 안내로 바뀌었습니다(직접 고친 문구는 그대로 유지).</li>
+      <li>무료 20건을 넘겨 쓰려면 해제 코드가 필요합니다(설정 → 무제한 해제).</li>
+    </ul>
+
+    <h2>이미 설치하셨다면</h2>
+    <p>새 APK를 내려받아 위에 덮어서 설치하면 됩니다. 설정과 발송 기록은 유지됩니다.</p>
+
+    <h2>설치 방법</h2>
+    <ol>
+      <li>휴대폰에서 이 페이지를 열고 위 버튼으로 APK를 내려받습니다.</li>
+      <li>내려받은 파일을 열고, "출처를 알 수 없는 앱 설치" 허용을 한 번 켭니다.</li>
+      <li>설치 후 앱을 열어 첫 화면의 안내를 읽고 <b>동의하고 시작</b>을 누릅니다.</li>
+      <li>"준비 상태"를 위에서부터 차례로 처리합니다: 전화 상태, 문자 발송, 알림 권한, 통화 선별 앱 지정, 배터리 제한 해제.</li>
+      <li>문구와 시간대를 저장하고 스위치를 켠 뒤, 다른 전화로 걸어 받지 않고 끊어 확인합니다.</li>
+    </ol>
+
+    <h2>갤럭시에서 꼭 해 주세요</h2>
+    <ul>
+      <li>설정 → 배터리 → 백그라운드 사용 제한에서 <b>자동답장을 절전 예외</b>로 둡니다.</li>
+      <li>"사용하지 않는 앱 절전"을 끕니다. 빠지면 삼성에서 앱이 꺼져 문자가 안 갈 수 있습니다.</li>
+    </ul>
+
+    <h2>문자 요금</h2>
+    <p>문자는 이 휴대폰의 요금제로 직접 발송됩니다. 긴 문구(약 40자 이상)는 장문으로 나가 요금제에 따라 추가 요금이 붙을 수 있으니 짧게 쓰는 것을 권합니다. 무료 20건을 쓰면 발송이 멈춥니다.</p>
+
+    <h2>사용 이력 전송</h2>
+    <div class="note">
+      개발자가 동작을 확인할 수 있도록 사용 이력(시각, 결과 코드, 기기 모델, 안드로이드 버전)을 전송합니다.
+      <b>전화번호, 문자 문구, 연락처는 전송하지 않습니다.</b> 앱 설정의 "사용 이력 전송" 스위치로 끌 수 있습니다.
+    </div>
+
+    <h2>알아 두세요</h2>
+    <ul>
+      <li>개인 테스트용이라 Play 스토어 버전과 서명이 달라, 나중에 Play 버전으로 옮길 때는 삭제 후 다시 설치해야 합니다.</li>
+      <li>문제가 생기면 발생 시각과 상황을 알려 주세요. 사용 이력으로 원인을 찾아봅니다.</li>
+    </ul>
+  </div>
+</body>
+</html>
