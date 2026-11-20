@@ -9,7 +9,14 @@
   <meta property="og:title" content="Onepixel — 1인 개발 스튜디오" />
   <meta property="og:description" content="기획부터 출시까지, 1인 개발자 Onepixel이 만드는 앱과 게임들." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://onepixel.pages.dev/" />
+  <link rel="canonical" href="https://onepixel.yhchad.com/" />
+  <meta property="og:url" content="https://onepixel.yhchad.com/" />
+  <meta property="og:site_name" content="Onepixel" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Onepixel — 1인 개발 스튜디오" />
+  <meta name="twitter:description" content="기획부터 출시까지, 1인 개발자 Onepixel이 만드는 앱과 게임들." />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Onepixel","url":"https://onepixel.yhchad.com/","inLanguage":"ko"}</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -47,6 +54,7 @@
     .badge.plan   { background: #2a2a2a; color: #999; }
     .badge.proto  { background: #1d2b4a; color: #7ea6ff; }
     .badge.closed { background: #4a2f1d; color: #ffab6b; }
+    .badge.review { background: #4a431d; color: #ffe27a; }
     .badge.live   { background: #1d3a26; color: #6bdb8f; }
 
     .featured {
@@ -105,6 +113,12 @@
     .revenue-table th:first-child, .revenue-table td:first-child { text-align: left; }
     .revenue-table th { color: #888; font-weight: 600; }
   </style>
+  <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-M62ZBNMM"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  </script>
 </head>
 <body>
   <div class="wrap">
@@ -118,17 +132,17 @@
       <span>⬜ 기획</span>
       <span>🔵 프로토타입 (내부테스트)</span>
       <span>🟠 비공개테스트</span>
+      <span>🟡 출시 심사 중</span>
       <span>🟢 출시</span>
     </div>
 
+    <!-- APPS:START -->
     <section class="featured">
       <span class="badge closed">🟠 비공개테스트 진행중</span>
       <h2>슬라이드 100</h2>
       <div class="sub">3x3부터 8x8까지, 100개 스테이지 슬라이딩 퍼즐 · Flutter · Android</div>
       <p class="story">
-        어릴 때 한 번쯤 만져봤을 그 15퍼즐을, 스테이지 100개짜리 모바일 게임으로 다시 만들고 있습니다.
-        엔진부터 스테이지 100개, 6개 언어 번역, 효과음까지 혼자 하나씩 붙여 나가는 중이고,
-        지금 비공개 테스트가 진행 중입니다. 테스터로 참여해주시는 분들 덕분에 다음 단계로 넘어갈 수 있습니다.
+        어릴 때 한 번쯤 만져봤을 그 15퍼즐을, 스테이지 100개짜리 모바일 게임으로 다시 만들고 있습니다. 엔진부터 스테이지 100개, 6개 언어 번역, 효과음까지 혼자 하나씩 붙여 나가는 중이고, 지금 비공개 테스트가 진행 중입니다. 테스터로 참여해주시는 분들 덕분에 다음 단계로 넘어갈 수 있습니다.
       </p>
       <div class="cta-row">
         <a class="cta ready" href="https://groups.google.com/g/slide100" target="_blank" rel="noopener">① 테스터 그룹 가입하기</a>
@@ -143,8 +157,7 @@
       <h2>한눈에 미세먼지</h2>
       <div class="sub">내 위치 기준 실시간 미세먼지 정보 · Expo/React Native · Android</div>
       <p class="story">
-        한눈에 미세먼지는 내 위치를 기준으로 실시간 미세먼지·초미세먼지·대기질 정보를 확인할 수 있는 앱입니다.
-        잠금화면과 알림을 통해 앱을 열지 않아도 오늘의 대기질을 바로 볼 수 있어요. 지금 비공개 테스트가 진행 중입니다.
+        한눈에 미세먼지는 내 위치를 기준으로 실시간 미세먼지·초미세먼지·대기질 정보를 확인할 수 있는 앱입니다. 잠금화면과 알림을 통해 앱을 열지 않아도 오늘의 대기질을 바로 볼 수 있어요. 지금 비공개 테스트가 진행 중입니다.
       </p>
       <div class="cta-row">
         <a class="cta ready" href="https://play.google.com/apps/testing/com.anonymous.dustywipe" target="_blank" rel="noopener">테스트 참여 →</a>
@@ -153,24 +166,10 @@
 
     <section class="featured">
       <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
-      <h2>한눈에 일정</h2>
-      <div class="sub">잠금화면에서 바로 보는 오늘의 일정 · Flutter · Android</div>
-      <p class="story">
-        한눈에 일정은 잠금화면을 손가락으로 지우면 오늘의 캘린더 일정이 나타나는 위젯 앱입니다.
-        원하는 시간에 다정한 음성으로 하루 일정을 읽어주는 알람 기능도 함께 제공해요. 지금 내부 테스트 단계입니다.
-      </p>
-      <div class="cta-row">
-        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701060277425703133" target="_blank" rel="noopener">테스트 참여 →</a>
-      </div>
-    </section>
-
-    <section class="featured">
-      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
       <h2>Autoplay</h2>
       <div class="sub">블루투스 연결 시 음악 앱 자동 실행 · Flutter · Android</div>
       <p class="story">
-        Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는
-        트리거 앱입니다. 지금 내부 테스트 단계입니다.
+        Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는 트리거 앱입니다. 지금 내부 테스트 단계입니다.
       </p>
       <div class="cta-row">
         <a class="cta ready" href="https://play.google.com/apps/internaltest/4701744029398544851" target="_blank" rel="noopener">테스트 참여 →</a>
@@ -178,44 +177,29 @@
     </section>
 
     <section class="featured">
-      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
-      <h2>NotiSaver</h2>
-      <div class="sub">놓친 알림을 보관하는 알림함 · Flutter · Android</div>
+      <span class="badge review">🟡 출시 심사 중</span>
+      <h2>자동답장</h2>
+      <div class="sub">부재중 전화에 자동으로 문자 답장 · Kotlin/Jetpack Compose · Android</div>
       <p class="story">
-        NotiSaver는 놓친 알림을 저장해두었다가 언제든 다시 확인할 수 있는 알림 보관함 앱입니다.
-        사용자가 선택한 앱(카카오톡·왓츠앱 등)의 알림만 저장하고, 생체인증으로 잠글 수 있어요. 지금 내부 테스트 단계입니다.
+        전화를 못 받았을 때 미리 정한 문구를 자동으로 문자로 보내 주는 앱입니다. 시간대 설정, 같은 번호 중복 방지, 제외 번호를 지원합니다. 지금 Google Play 출시 심사 중이고, 심사가 끝나기 전에는 설치 파일(APK)로 직접 써 볼 수 있습니다.
       </p>
       <div class="cta-row">
-        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701512644720882095" target="_blank" rel="noopener">테스트 참여 →</a>
+        <a class="cta ready" href="/autoreply/">설치 페이지 →</a>
       </div>
     </section>
 
     <section class="featured">
-      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
-      <h2>스타스웜</h2>
-      <div class="sub">우주선 슈팅 게임 · Flutter · Android</div>
-      <p class="story">
-        스타스웜은 우주선을 조종해 몰려오는 적을 격파하는 클래식 슈팅 게임입니다.
-        내 얼굴 사진을 등록해서 우주선에 나만의 캐릭터를 꾸밀 수 있는 기능도 있어요. 지금 내부 테스트 단계입니다.
-      </p>
-      <div class="cta-row">
-        <a class="cta ready" href="https://play.google.com/apps/internaltest/4700789151014932952" target="_blank" rel="noopener">테스트 참여 →</a>
-      </div>
-    </section>
-
-    <section class="featured">
-      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <span class="badge live">🟢 출시됨 (Google Play)</span>
       <h2>ZenDoku</h2>
       <div class="sub">압박 없이 몰입하는 스도쿠 · Kotlin/Jetpack Compose · Android</div>
       <p class="story">
-        ZenDoku는 정답을 바로 알려주는 대신, 다음에 적용 가능한 풀이 기법을 하나씩 짚어주는 AI 코칭 힌트로
-        스도쿠 실력을 늘려주는 앱입니다. 타이머와 실수 카운트를 숨긴 젠 모드로 압박 없이 몰입할 수 있고,
-        매일 같은 퍼즐을 푸는 데일리 챌린지도 제공해요. 지금 내부 테스트 단계입니다.
+        ZenDoku는 정답을 바로 알려주는 대신, 다음에 적용 가능한 풀이 기법을 하나씩 짚어주는 AI 코칭 힌트로 스도쿠 실력을 늘려주는 앱입니다. 타이머와 실수 카운트를 숨긴 젠 모드로 압박 없이 몰입할 수 있고, 매일 같은 퍼즐을 푸는 데일리 챌린지도 제공해요. Google Play에서 설치할 수 있습니다.
       </p>
       <div class="cta-row">
-        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701016357781330197" target="_blank" rel="noopener">테스트 참여 →</a>
+        <a class="cta ready" href="https://play.google.com/store/apps/details?id=com.zendoku.sudoku" target="_blank" rel="noopener">Play 스토어에서 받기 →</a>
       </div>
     </section>
+    <!-- APPS:END -->
 
     <nav class="menu">
       <button id="revenueToggle" type="button">💰 매출 현황</button>
@@ -235,7 +219,7 @@
     </div>
 
     <footer>
-      각 앱의 테스트 설치 링크는 <a href="https://chad0920kim.github.io/testing/" target="_blank" rel="noopener">여기</a>에서도 모아볼 수 있습니다.<br>
+      각 앱의 테스트 설치 링크는 <a href="https://yhchad.com/testing/" target="_blank" rel="noopener">여기</a>에서도 모아볼 수 있습니다.<br>
       © 2026 Onepixel.
     </footer>
   </div>

@@ -1,3 +1,5 @@
 admob/
 .wrangler/
 .DS_Store
+tools/.deployed_hash
+__pycache__/

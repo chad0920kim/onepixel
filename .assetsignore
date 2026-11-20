@@ -8,3 +8,7 @@ _worker.js
 admob/
 .wrangler/
 .DS_Store
+
+tools/
+apps.json
+.deployed_hash
