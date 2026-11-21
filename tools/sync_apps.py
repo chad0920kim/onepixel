@@ -12,6 +12,7 @@
 """
 import html
 import json
+import re
 import sys
 import urllib.request
 import urllib.error
@@ -153,6 +154,39 @@ def render_card(app):
     return "\n".join(out)
 
 
+AR_PAGE = ROOT / "autoreply" / "index.html"
+
+LIVE_STORE_BLOCK = """    <p class="sub">부재중 전화가 오면 미리 정한 문구를 자동으로 문자로 보내 주는 앱입니다. 이제 Google Play에서 설치할 수 있습니다.</p>
+
+    <a class="dl" href="{url}" target="_blank" rel="noopener">Google Play에서 받기</a>
+    <div class="meta">Android 10 이상 · 갤럭시 S9 / S21 / Z Flip7 등</div>
+"""
+LIVE_APKONLY_BLOCK = """    <h2>APK로 먼저 설치하셨다면</h2>
+    <p>테스트용 APK는 Play 버전과 서명이 달라 덮어 설치되지 않습니다. 앱을 삭제한 뒤 위 버튼으로 Play에서 다시 설치해 주세요.</p>
+
+"""
+
+
+def build_autoreply_page():
+    """자동답장이 live 이면 설치 페이지의 APK 안내를 Play 링크로 바꾼다(심사 통과 후 자동). live 가 아니면 그대로 둔다."""
+    app = next((a for a in load()["apps"] if a["id"] == "autoreply"), None)
+    if not app or app["status"] != "live" or not AR_PAGE.exists():
+        return False
+    s = AR_PAGE.read_text(encoding="utf-8")
+    new = s
+    for tag, block in (("STORE", LIVE_STORE_BLOCK.format(url=STORE.format(app["package"]))), ("APKONLY", LIVE_APKONLY_BLOCK)):
+        a, b = f"<!-- {tag}:START -->", f"<!-- {tag}:END -->"
+        if a in new and b in new:
+            head, rest = new.split(a, 1)
+            _, tail = rest.split(b, 1)
+            new = head + a + "\n" + block + "    " + b + tail
+    new = re.sub(r"<title>.*?</title>", "<title>자동답장 설치 — Onepixel</title>", new, count=1)
+    if new != s:
+        AR_PAGE.write_text(new, encoding="utf-8")
+        return True
+    return False
+
+
 def build():
     data = load()
     cards = [render_card(a) for a in data["apps"] if a["status"] != "discarded"]
@@ -162,10 +196,13 @@ def build():
     head, rest = text.split(START, 1)
     _, tail = rest.split(END, 1)
     new = head + START + "\n" + "\n\n".join(cards) + "\n    " + END + tail
+    changed = False
     if new != text:
         INDEX.write_text(new, encoding="utf-8")
-        return True
-    return False
+        changed = True
+    if build_autoreply_page():
+        changed = True
+    return changed
 
 
 def status():
@@ -189,6 +226,8 @@ def main():
         if not app or sys.argv[3] not in list(BADGE) + ["discarded"]:
             sys.exit("id 또는 status 가 올바르지 않습니다")
         app["status"] = sys.argv[3]
+        if app["status"] == "live" and app.get("package"):
+            promote_to_live(app)  # 버튼을 Play 스토어 링크로 교체
         save(data)
         print("index.html 갱신" if build() else "index.html 변경 없음")
     elif cmd == "add" and len(sys.argv) >= 5:
