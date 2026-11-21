@@ -19,3 +19,6 @@ ADMOB_PUBLISHER_ID = "pub-4835070281978073"
 [[kv_namespaces]]
 binding = "SUGGESTIONS"
 id = "aef5247955a449b2b2e8997ce47e78ee"
+
+[triggers]
+crons = ["30 0 * * *"]  # 매일 09:30 KST

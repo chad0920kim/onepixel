@@ -38,6 +38,20 @@
     .pending { color: #aaa; font-size: 0.9rem; }
     .pending b { color: #e8e8e8; }
     .state { color: #999; font-size: 0.9rem; }
+    .seg { display: inline-flex; border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; }
+    .seg button { background: #151515; color: #aaa; border: 0; padding: 7px 14px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+    .seg button[aria-pressed="true"] { background: #7c5cff; color: #fff; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .delta { font-size: 0.8rem; margin-top: 2px; }
+    .up { color: #5fd38d; } .down { color: #ff7a7a; } .flat { color: #888; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: #aaa; margin-top: 8px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    tr.app-row { cursor: pointer; } tr.app-row:hover td { background: #1b1b1b; }
+    tr.app-row td:first-child::before { content: '▸ '; color: #777; } tr.app-row.open td:first-child::before { content: '▾ '; }
+    tr.detail td { white-space: normal; text-align: left; background: #121212; padding: 12px 10px; }
+    .detail-grid { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; font-size: 0.82rem; color: #aaa; }
+    .detail-grid b { display: block; color: #e8e8e8; font-size: 1rem; }
+    .note { color: #777; font-size: 0.76rem; margin-top: 8px; }
     #tip { color: #aaa; font-size: 0.8rem; min-height: 1.4em; margin-top: 6px; }
   </style>
 </head>
@@ -46,28 +60,49 @@
     <a class="back" href="/">← Onepixel</a>
     <header>
       <h1><span class="g">앱 현황</span> 대시보드</h1>
-      <p class="sub">AdMob 광고 수익은 최근 30일 추정치이며, 정산 금액과 다를 수 있습니다. 하루 이틀 늦게 반영됩니다.</p>
+      <p class="sub">AdMob 광고 수익은 추정치이며, 정산 금액과 다를 수 있습니다. 하루 이틀 늦게 반영됩니다.</p>
     </header>
 
     <div class="state" id="state">불러오는 중...</div>
 
     <section id="body" hidden>
+      <div class="toolbar" style="margin-bottom:14px">
+        <div class="seg" role="group" aria-label="기간 선택">
+          <button type="button" data-range="7" aria-pressed="false">7일</button>
+          <button type="button" data-range="30" aria-pressed="true">30일</button>
+          <button type="button" data-range="90" aria-pressed="false">90일</button>
+        </div>
+        <span class="sub" id="rangeNote"></span>
+      </div>
       <div class="cards" id="cards"></div>
 
       <div class="panel" style="margin-top:20px">
-        <h2>일별 광고 수익 (원)</h2>
-        <svg id="chart" viewBox="0 0 640 200" role="img" aria-label="최근 30일 일별 광고 수익 막대그래프"></svg>
-        <div id="tip">막대를 누르면 날짜별 금액이 보입니다.</div>
+        <h2 id="chartTitle">일별 광고 수익 (원)</h2>
+        <svg id="chart" viewBox="0 0 640 200" role="img" aria-label="일별 광고 수익 쌓은 막대그래프"></svg>
+        <div class="legend" id="legend"></div>
+        <div id="tip">막대를 누르면 날짜별 금액과 앱별 내역이 보입니다.</div>
       </div>
 
       <div class="panel" style="margin-top:20px">
-        <h2>앱별 (최근 30일)</h2>
+        <h2 id="appsTitle">앱별</h2>
         <div class="scroll">
           <table>
-            <thead><tr><th>앱</th><th>수익</th><th>노출</th><th>클릭</th><th>CTR</th><th>1천 노출당</th></tr></thead>
+            <thead><tr><th>앱</th><th>수익</th><th>이전 대비</th><th>노출</th><th>클릭</th><th>CTR</th><th>1천 노출당</th></tr></thead>
             <tbody id="apps"></tbody>
           </table>
         </div>
+        <p class="note">앱 행을 누르면 일별 추이와 설치 1건당 수익이 보입니다.</p>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>월별 합계</h2>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>월</th><th>수익</th><th>전월 대비</th><th>노출</th><th>1천 노출당</th></tr></thead>
+            <tbody id="months"></tbody>
+          </table>
+        </div>
+        <p class="note" id="monthNote"></p>
       </div>
     </section>
 
@@ -88,70 +123,168 @@
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmtDate = (d) => `${d.slice(4, 6)}/${d.slice(6, 8)}`;
 
+    const COLORS = ['#7c5cff', '#ff5c9e', '#3ccfb4', '#ffb454', '#5ca8ff', '#9bd65c', '#c58bff'];
+    const ymd = (d) => `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+    const kstToday = () => new Date(Date.now() + 9 * 3600 * 1000); // UTC 필드가 한국 날짜
+    const addDays = (d, n) => { const x = new Date(d); x.setUTCDate(x.getUTCDate() + n); return x; };
+    const pctHtml = (cur, prev, ok) => {
+      if (!ok || !(prev > 0)) return '<span class="flat">비교 기간 부족</span>';
+      const p = (cur - prev) / prev * 100;
+      if (Math.abs(p) < 0.5) return '<span class="flat">― 0%</span>';
+      if (p >= 1000) return '<span class="up">▲ 1,000%+</span>';
+      return p > 0 ? `<span class="up">▲ ${p.toFixed(0)}%</span>` :`<span class="down">▼ ${Math.abs(p).toFixed(0)}%</span>`;
+    };
+    const normName = (s) => String(s).toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+    const num = (v) => { const n = Number(String(v ?? '').replace(/[^0-9.]/g, '')); return Number.isFinite(n) && String(v ?? '').match(/\d/) ? n : null; };
+
+    let ROWS = [], PLAY = [], range = 30;
+
+    function sparkline(vals, color) {
+      const W = 220, H = 44, max = Math.max(1, ...vals), bw = W / vals.length;
+      return `<svg viewBox="0 0 ${W} ${H}" style="width:220px;height:44px" role="img" aria-label="일별 수익 추이">` +
+        vals.map((v, i) => { const h = Math.max(v > 0 ? 1.5 : 0, v / max * (H - 2)); return `<rect x="${i * bw + 0.5}" y="${H - h}" width="${Math.max(1, bw - 1)}" height="${h}" fill="${color}"/>`; }).join('') + '</svg>';
+    }
+
+    function playFor(appName) {
+      const k = normName(appName);
+      return PLAY.find((p) => { const n = normName(p.name); return n && (n === k || n.includes(k) || k.includes(n)); });
+    }
+
+    function render() {
+      const today = kstToday();
+      const keyOf = (n) => ymd(addDays(today, -n));           // n=0 오늘
+      const curKeys = []; for (let i = range - 1; i >= 0; i--) curKeys.push(keyOf(i));
+      const curSet = new Set(curKeys);
+      const prevSet = new Set(); for (let i = range; i < range * 2; i++) prevSet.add(keyOf(i));
+      const earliest = ROWS.length ? ROWS.reduce((m, r) => (r.date < m ? r.date : m), ROWS[0].date) : '99999999';
+      const hasPrev = earliest <= keyOf(range * 2 - 1);
+
+      const cur = ROWS.filter((r) => curSet.has(r.date));
+      const prev = ROWS.filter((r) => prevSet.has(r.date));
+      const sum = (arr, f) => arr.reduce((s, r) => s + r[f], 0);
+      const total = sum(cur, 'krw'), prevTotal = sum(prev, 'krw');
+      const imps = sum(cur, 'impressions'), clicks = sum(cur, 'clicks');
+
+      // 이번 달 누적 · 월말 예상 (어제까지 기준)
+      const monthPrefix = ymd(today).slice(0, 6);
+      const todayKey = ymd(today);
+      const monthSum = ROWS.filter((r) => r.date.startsWith(monthPrefix) && r.date < todayKey).reduce((s, r) => s + r.krw, 0);
+      const elapsed = today.getUTCDate() - 1;
+      const dim = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+      const projection = elapsed > 0 ? monthSum / elapsed * dim : null;
+      const yKey = keyOf(1);
+      const yday = ROWS.filter((r) => r.date === yKey).reduce((s, r) => s + r.krw, 0);
+
+      document.getElementById('rangeNote').textContent = `${curKeys[0].slice(4, 6)}/${curKeys[0].slice(6, 8)} ~ 오늘 · 오늘은 집계 중`;
+      document.getElementById('chartTitle').textContent = `일별 광고 수익 (원) · 최근 ${range}일`;
+      document.getElementById('appsTitle').textContent = `앱별 (최근 ${range}일)`;
+
+      document.getElementById('cards').innerHTML = [
+        [`${range}일 수익`, won(total), `<div class="delta">${pctHtml(total, prevTotal, hasPrev)} <span class="flat">직전 ${range}일 대비</span></div>`],
+        ['일평균', won(total / range), `<div class="n">어제 ${won(yday)}</div>`],
+        ['이번 달 누적', won(monthSum), `<div class="n">${projection == null ? '월말 예상은 내일부터' : '월말 예상 ' + won(projection)}</div>`],
+        ['노출 · 클릭', `${imps.toLocaleString()} · ${clicks.toLocaleString()}`, `<div class="n">CTR ${imps ? (clicks / imps * 100).toFixed(2) : '0.00'}%</div>`],
+      ].map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v" style="font-size:${v.length > 14 ? '1.05rem' : '1.5rem'}">${v}</div>${n}</div>`).join('');
+
+      // 앱 순서·색 (기간 수익 큰 순)
+      const byApp = new Map();
+      for (const r of cur) { const a = byApp.get(r.app) || { krw: 0, imps: 0, clicks: 0 }; a.krw += r.krw; a.imps += r.impressions; a.clicks += r.clicks; byApp.set(r.app, a); }
+      const prevByApp = new Map();
+      for (const r of prev) prevByApp.set(r.app, (prevByApp.get(r.app) || 0) + r.krw);
+      const appList = [...byApp.entries()].sort((a, b) => b[1].krw - a[1].krw);
+      const colorOf = new Map(appList.map(([n], i) => [n, COLORS[i % COLORS.length]]));
+
+      document.getElementById('legend').innerHTML = appList.map(([n]) => `<span><i style="background:${colorOf.get(n)}"></i>${esc(n)}</span>`).join('');
+
+      // 쌓은 막대
+      const cell = new Map(); // date -> Map(app->krw)
+      for (const r of cur) { if (!cell.has(r.date)) cell.set(r.date, new Map()); cell.get(r.date).set(r.app, (cell.get(r.date).get(r.app) || 0) + r.krw); }
+      const dayTotals = curKeys.map((k) => [...(cell.get(k) || new Map()).values()].reduce((s, v) => s + v, 0));
+      const W = 640, H = 200, padL = 8, padB = 22, padT = 8, max = Math.max(1, ...dayTotals), bw = (W - padL * 2) / curKeys.length;
+      const gap = bw > 6 ? 1.5 : 0.5;
+      let svg = `<line class="axis" x1="${padL}" y1="${H - padB}" x2="${W - padL}" y2="${H - padB}"/>`;
+      const step = Math.max(1, Math.round(range / 6));
+      curKeys.forEach((k, i) => {
+        let y = H - padB; const x = padL + i * bw;
+        for (const [name] of appList) {
+          const v = (cell.get(k) || new Map()).get(name) || 0; if (!v) continue;
+          const h = Math.max(1, v / max * (H - padB - padT)); y -= h;
+          svg += `<rect class="bar" data-i="${i}" x="${x + gap}" y="${y}" width="${Math.max(1, bw - gap * 2)}" height="${h}" fill="${colorOf.get(name)}"/>`;
+        }
+        svg += `<rect data-i="${i}" x="${x}" y="${padT}" width="${bw}" height="${H - padB - padT}" fill="transparent"/>`;
+        if ((curKeys.length - 1 - i) % step === 0) svg += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${fmtDate(k)}</text>`;
+      });
+      const chart = document.getElementById('chart');
+      chart.innerHTML = svg;
+      chart.onclick = (e) => {
+        const i = e.target.dataset && e.target.dataset.i; if (i == null) return;
+        const m = cell.get(curKeys[i]) || new Map();
+        const parts = appList.filter(([n]) => m.get(n)).map(([n]) => `${esc(n)} ${won(m.get(n))}`);
+        document.getElementById('tip').innerHTML = `${fmtDate(curKeys[i])} · <b>${won(dayTotals[i])}</b>${parts.length ? ' — ' + parts.join(' · ') : ''}`;
+      };
+
+      // 앱별 표 + 상세
+      const play28 = (name) => { const p = playFor(name); return p ? num((p.values || {})['기기 획득 수']) : null; };
+      const last28 = new Set(); for (let i = 1; i <= 28; i++) last28.add(keyOf(i));
+      const rev28 = (name) => ROWS.filter((r) => r.app === name && last28.has(r.date)).reduce((s, r) => s + r.krw, 0);
+      const tb = document.getElementById('apps');
+      tb.innerHTML = appList.map(([name, a], idx) => `
+        <tr class="app-row" data-idx="${idx}" tabindex="0" role="button" aria-expanded="false"><td>${esc(name)}</td><td>${won(a.krw)}</td><td>${pctHtml(a.krw, prevByApp.get(name) || 0, hasPrev)}</td>
+        <td>${a.imps.toLocaleString()}</td><td>${a.clicks.toLocaleString()}</td>
+        <td>${a.imps ? (a.clicks / a.imps * 100).toFixed(2) : '0.00'}%</td><td>${a.imps ? won(a.krw / a.imps * 1000) : '-'}</td></tr>`).join('') ||
+        '<tr><td colspan="7">데이터가 없습니다</td></tr>';
+      const toggle = (tr) => {
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains('detail')) { next.remove(); tr.classList.remove('open'); tr.setAttribute('aria-expanded', 'false'); return; }
+        const [name, a] = appList[Number(tr.dataset.idx)];
+        const vals = curKeys.map((k) => ROWS.filter((r) => r.date === k && r.app === name).reduce((s, r) => s + r.krw, 0));
+        const best = Math.max(...vals), bestI = vals.indexOf(best);
+        const installs = play28(name), r28 = rev28(name);
+        const arpu = installs ? `${won(r28 / installs)}` : '-';
+        const d = document.createElement('tr'); d.className = 'detail';
+        d.innerHTML = `<td colspan="7"><div class="detail-grid">
+          <div>${sparkline(vals, colorOf.get(name))}</div>
+          <div>일평균<b>${won(a.krw / range)}</b></div>
+          <div>최고 일<b>${best > 0 ? won(best) + ' (' + fmtDate(curKeys[bestI]) + ')' : '-'}</b></div>
+          <div>클릭당 수익<b>${a.clicks ? won(a.krw / a.clicks) : '-'}</b></div>
+          <div>설치 1건당 수익(28일)<b>${arpu}</b></div></div>
+          <p class="note">설치 1건당 수익 = AdMob 최근 28일 수익 ÷ Play Console 기기 획득 수(28일). 앱 이름이 달라 연결되지 않으면 "-"로 표시됩니다.</p></td>`;
+        tr.after(d); tr.classList.add('open'); tr.setAttribute('aria-expanded', 'true');
+      };
+      tb.onclick = (e) => { const tr = e.target.closest('tr.app-row'); if (tr) toggle(tr); };
+      tb.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { const tr = e.target.closest('tr.app-row'); if (tr) { e.preventDefault(); toggle(tr); } } };
+
+      // 월별 합계
+      const months = new Map();
+      for (const r of ROWS) { const m = r.date.slice(0, 6); const o = months.get(m) || { krw: 0, imps: 0 }; o.krw += r.krw; o.imps += r.impressions; months.set(m, o); }
+      const mk = [...months.keys()].sort().reverse();
+      const firstMonth = earliest.slice(0, 6);
+      document.getElementById('months').innerHTML = mk.map((m, i) => {
+        const o = months.get(m), pm = mk[i + 1], po = pm ? months.get(pm) : null;
+        const partial = m === monthPrefix || m === firstMonth;
+        const cmp = po && !partial && pm !== firstMonth ? pctHtml(o.krw, po.krw, true) : '<span class="flat">-</span>';
+        return `<tr><td>${m.slice(0, 4)}.${m.slice(4)}${m === monthPrefix ? ' (진행 중)' : m === firstMonth ? ' (일부)' : ''}</td><td>${won(o.krw)}</td><td>${cmp}</td><td>${o.imps.toLocaleString()}</td><td>${o.imps ? won(o.krw / o.imps * 1000) : '-'}</td></tr>`;
+      }).join('') || '<tr><td colspan="5">데이터가 없습니다</td></tr>';
+      document.getElementById('monthNote').textContent = ROWS.length ? `기록은 ${earliest.slice(0, 4)}.${earliest.slice(4, 6)}.${earliest.slice(6, 8)}부터 매일 자동으로 쌓입니다. 진행 중인 달과 첫 달은 일부만 포함됩니다.` : '';
+    }
+
+    document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+      range = Number(b.dataset.range);
+      document.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      render();
+    }));
+
     (async () => {
       const state = document.getElementById('state');
       try {
-        const res = await fetch('/api/admob-daily');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'error');
-        const rows = data.rows;
-
-        // 날짜별 합계 (데이터 없는 날은 0으로 채움)
-        const byDate = new Map();
-        for (const r of rows) byDate.set(r.date, (byDate.get(r.date) || 0) + r.krw);
-        const days = [];
-        const t = new Date();
-        for (let i = 29; i >= 0; i--) {
-          const d = new Date(t); d.setDate(t.getDate() - i);
-          const key = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-          days.push({ date: key, krw: byDate.get(key) || 0 });
-        }
-
-        const total = rows.reduce((s, r) => s + r.krw, 0);
-        const imps = rows.reduce((s, r) => s + r.impressions, 0);
-        const clicks = rows.reduce((s, r) => s + r.clicks, 0);
-        const last7 = days.slice(-7).reduce((s, d) => s + d.krw, 0);
-        const today = days[days.length - 1].krw;
-        const yday = days[days.length - 2].krw;
-
-        document.getElementById('cards').innerHTML = [
-          ['30일 수익', won(total), `일평균 ${won(total / 30)}`],
-          ['최근 7일', won(last7), `일평균 ${won(last7 / 7)}`],
-          ['어제 / 오늘', `${won(yday)} / ${won(today)}`, '오늘은 집계 중'],
-          ['노출 · 클릭', `${imps.toLocaleString()} · ${clicks.toLocaleString()}`, `CTR ${imps ? (clicks / imps * 100).toFixed(2) : '0.00'}%`],
-        ].map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v" style="font-size:${v.length > 14 ? '1.05rem' : '1.5rem'}">${v}</div><div class="n">${n}</div></div>`).join('');
-
-        // 막대그래프
-        const W = 640, H = 200, padL = 8, padB = 22, padT = 8;
-        const max = Math.max(1, ...days.map((d) => d.krw));
-        const bw = (W - padL * 2) / days.length;
-        let svg = `<line class="axis" x1="${padL}" y1="${H - padB}" x2="${W - padL}" y2="${H - padB}"/>`;
-        days.forEach((d, i) => {
-          const h = Math.max(d.krw > 0 ? 2 : 0, (d.krw / max) * (H - padB - padT));
-          const x = padL + i * bw;
-          svg += `<rect class="bar" data-i="${i}" x="${x + 1.5}" y="${H - padB - h}" width="${bw - 3}" height="${h}" rx="2"/>`;
-          if (i % 5 === 0 || i === days.length - 1) svg += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${fmtDate(d.date)}</text>`;
-        });
-        const chart = document.getElementById('chart');
-        chart.innerHTML = svg;
-        chart.addEventListener('click', (e) => {
-          const i = e.target.dataset && e.target.dataset.i;
-          if (i == null) return;
-          document.getElementById('tip').textContent = `${fmtDate(days[i].date)} · ${won(days[i].krw)}`;
-        });
-
-        // 앱별 표
-        const apps = new Map();
-        for (const r of rows) {
-          const a = apps.get(r.app) || { krw: 0, imps: 0, clicks: 0 };
-          a.krw += r.krw; a.imps += r.impressions; a.clicks += r.clicks;
-          apps.set(r.app, a);
-        }
-        document.getElementById('apps').innerHTML = [...apps.entries()].sort((a, b) => b[1].krw - a[1].krw).map(([name, a]) => `
-          <tr><td>${esc(name)}</td><td>${won(a.krw)}</td><td>${a.imps.toLocaleString()}</td><td>${a.clicks.toLocaleString()}</td>
-          <td>${a.imps ? (a.clicks / a.imps * 100).toFixed(2) : '0.00'}%</td><td>${a.imps ? won(a.krw / a.imps * 1000) : '-'}</td></tr>`).join('') ||
-          '<tr><td colspan="6">데이터가 없습니다</td></tr>';
-
+        const [hRes, pRes] = await Promise.all([fetch('/api/admob-history'), fetch('/api/play-stats').catch(() => null)]);
+        const data = await hRes.json();
+        if (!hRes.ok) throw new Error(data.error || 'error');
+        // 폐기한 앱은 화면에서 뺀다(기록은 KV 에 그대로 있음). 새로 폐기하면 이름 조각을 추가.
+        const HIDDEN = ['스타스웜', 'starswarm', 'nebula', '알림보관함', 'notisaver', '한눈에일정', 'schedulewipe', '캠퍼톡', 'campertok'];
+        ROWS = (data.rows || []).filter((r) => { const n = normName(r.app); return !HIDDEN.some((h) => n.includes(normName(h))); });
+        try { PLAY = pRes ? ((await pRes.json()).apps || []) : []; } catch (e) { PLAY = []; }
+        render();
         state.hidden = true;
         document.getElementById('body').hidden = false;
       } catch (e) {
