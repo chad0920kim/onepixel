@@ -80,7 +80,12 @@
     footer a { color: #888; }
 
     nav.menu {
-      display: flex; justify-content: center; margin: 50px 0 20px;
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 8px; margin: 50px 0 20px;
+    }
+    nav.menu button, nav.menu a { white-space: nowrap; line-height: 1.2; }
+    @media (max-width: 480px) {
+      nav.menu button, nav.menu a { padding: 8px 12px; font-size: 0.8rem; }
     }
     nav.menu button {
       background: #161616; border: 1px solid #2a2a2a; color: #ccc;
@@ -165,14 +170,14 @@
     </section>
 
     <section class="featured">
-      <span class="badge proto">🔵 프로토타입 (내부테스트)</span>
+      <span class="badge live">🟢 출시됨 (Google Play)</span>
       <h2>Autoplay</h2>
       <div class="sub">블루투스 연결 시 음악 앱 자동 실행 · Flutter · Android</div>
       <p class="story">
-        Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는 트리거 앱입니다. 지금 내부 테스트 단계입니다.
+        Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는 트리거 앱입니다. Google Play에서 설치할 수 있습니다.
       </p>
       <div class="cta-row">
-        <a class="cta ready" href="https://play.google.com/apps/internaltest/4701744029398544851" target="_blank" rel="noopener">테스트 참여 →</a>
+        <a class="cta ready" href="https://play.google.com/store/apps/details?id=com.chadkim.autoplay" target="_blank" rel="noopener">Play 스토어에서 받기 →</a>
       </div>
     </section>
 
@@ -199,10 +204,24 @@
         <a class="cta ready" href="https://play.google.com/store/apps/details?id=com.zendoku.sudoku" target="_blank" rel="noopener">Play 스토어에서 받기 →</a>
       </div>
     </section>
+
+    <section class="featured">
+      <span class="badge closed">🟠 비공개테스트 진행중</span>
+      <h2>챙겨줄개</h2>
+      <div class="sub">사료 소진일·접종·병원 영수증을 알림과 달력으로 챙기는 반려동물 기록 앱 · Flutter · Android</div>
+      <p class="story">
+        사료가 언제 떨어질지, 다음 접종이 언제인지, 병원 영수증은 어디 뒀는지. 반려동물 키우는 집에서 자꾸 잊어버리는 일을 한 앱에서 챙기려고 만들고 있습니다. 회원가입도 광고도 없이 기록은 폰 안에만 저장됩니다. 지금 비공개 테스트를 준비 중이고, 구글 심사가 끝나면 테스터를 모십니다.
+      </p>
+      <div class="cta-row">
+        <a class="cta ready" href="https://groups.google.com/g/chad-testers-a" target="_blank" rel="noopener">① 테스터 그룹 가입하기</a>
+        <a class="cta ready" href="https://play.google.com/apps/testing/com.yhchad.pet_note" target="_blank" rel="noopener">② Play 스토어에서 설치</a>
+      </div>
+    </section>
     <!-- APPS:END -->
 
     <nav class="menu">
       <button id="revenueToggle" type="button">💰 매출 현황</button>
+      <a href="/dashboard/">📊 앱 현황 대시보드</a>
       <a href="suggest.html">💡 필요한 앱 제안하기</a>
       <a href="/portfolio/">🧩 포트폴리오</a>
     </nav>
