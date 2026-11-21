@@ -5,23 +5,20 @@
 const DENIED_PATH_PATTERN = /^\/(\.|admob\/|wrangler(\.pages)?\.toml$|_?worker\.js$)/;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (DENIED_PATH_PATTERN.test(url.pathname)) {
       return new Response("Not found", { status: 404 });
     }
 
+    // AdMob 을 직접 부르는 응답은 몇 분간 엣지 캐시에 두어, 반복 호출이 AdMob 호출 한도를 소진하지 못하게 한다.
     if (url.pathname === "/api/admob-revenue") {
-      return handleAdmobRevenue(env);
-    }
-
-    if (url.pathname === "/api/admob-daily") {
-      return handleAdmobDaily(env);
+      return cachedResponse(request, ctx, 600, () => handleAdmobRevenue(env));
     }
 
     if (url.pathname === "/api/admob-history") {
-      return handleAdmobHistory(env);
+      return cachedResponse(request, ctx, 300, () => handleAdmobHistory(env));
     }
 
     if (url.pathname === "/api/play-stats") {
@@ -35,10 +32,10 @@ export default {
       return handleAutoreplyRedeem(request, env);
     }
     if (url.pathname === "/api/autoreply/unlock" && request.method === "GET") {
-      return handleAutoreplyUnlock(url, request, env);
+      return handleAutoreplyUnlock(url, request, env, ctx);
     }
     if (url.pathname === "/api/autoreply/log" && request.method === "POST") {
-      return handleAutoreplyLog(request, env);
+      return handleAutoreplyLog(request, env, ctx);
     }
 
     if (url.pathname === "/api/suggestions") {
@@ -55,6 +52,47 @@ export default {
     ctx.waitUntil(runDailyDigest(env));
   }
 };
+
+
+// ───────── 공통 보호 장치: 엣지 캐시 · 속도 제한 · 토큰 비교 ─────────
+// 캐시 키는 쿼리스트링을 버려서 ?x=1 같은 우회로 캐시를 피하지 못하게 한다. 실패도 60초 캐시해 AdMob 재호출을 막는다.
+async function cachedResponse(request, ctx, ttlSeconds, producer) {
+  const cache = caches.default;
+  const u = new URL(request.url);
+  const key = new Request(`${u.origin}${u.pathname}`, { method: "GET" });
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const res = await producer();
+  const out = new Response(res.body, res);
+  out.headers.set("Cache-Control", `public, max-age=${res.ok ? ttlSeconds : 60}`);
+  ctx.waitUntil(cache.put(key, out.clone()));
+  return out;
+}
+
+// 간이 속도 제한(엣지 캐시 카운터, 데이터센터별·근사치). 한도를 넘으면 true.
+async function rateLimited(ctx, bucket, limit, windowSeconds) {
+  const cache = caches.default;
+  const key = new Request(`https://ratelimit.internal/${encodeURIComponent(bucket)}`);
+  const now = Date.now();
+  const hit = await cache.match(key);
+  let st = hit ? await hit.json().catch(() => null) : null;
+  if (!st || st.exp <= now) st = { n: 0, exp: now + windowSeconds * 1000 };
+  if (st.n >= limit) return true;
+  st.n += 1;
+  const ttl = Math.max(1, Math.ceil((st.exp - now) / 1000));
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(st), { headers: { "Cache-Control": `max-age=${ttl}` } })));
+  return false;
+}
+
+// 자동답장 앱 토큰 확인. 시크릿(AR_TOKEN)이 없으면 모두 거부한다(코드에 값을 두지 않는다).
+function arAuthorized(request, env) {
+  const given = request.headers.get("x-ar-token") || "";
+  const want = env.AR_TOKEN || "";
+  if (!want || given.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= given.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
 
 // ───────── 수익 히스토리(KV "admob-history") · 텔레그램 요약 ─────────
 const HISTORY_KEY = "admob-history";
@@ -276,53 +314,6 @@ async function handleAdmobRevenue(env) {
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: "internal_error", detail: String(err) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-}
-
-// 대시보드용: 최근 30일을 날짜 x 앱으로 쪼갠 AdMob 보고서(원화 기준).
-async function handleAdmobDaily(env) {
-  try {
-    const accessToken = await getAccessToken(env);
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(start.getDate() - 29);
-    const res = await fetch(
-      `https://admob.googleapis.com/v1/accounts/${env.ADMOB_PUBLISHER_ID}/networkReport:generate`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reportSpec: {
-            dateRange: { startDate: dateParts(start), endDate: dateParts(end) },
-            metrics: ["ESTIMATED_EARNINGS", "IMPRESSIONS", "CLICKS"],
-            dimensions: ["DATE", "APP"],
-            localizationSettings: { currencyCode: "KRW" }
-          }
-        })
-      }
-    );
-    if (!res.ok) throw new Error(`admob_api_error: ${await res.text()}`);
-    const rows = (await res.json())
-      .filter((chunk) => chunk.row)
-      .map((chunk) => {
-        const d = chunk.row.dimensionValues || {};
-        const m = chunk.row.metricValues || {};
-        return {
-          date: d.DATE?.value,
-          app: d.APP?.displayLabel || d.APP?.value || "알 수 없음",
-          krw: Number(m.ESTIMATED_EARNINGS?.microsValue || 0) / 1_000_000,
-          impressions: Number(m.IMPRESSIONS?.integerValue || 0),
-          clicks: Number(m.CLICKS?.integerValue || 0)
-        };
-      });
-    return new Response(JSON.stringify({ currency: "KRW", rangeDays: 30, rows }), {
-      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" }
-    });
-  } catch (err) {
     return new Response(JSON.stringify({ error: "internal_error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
@@ -489,14 +480,17 @@ async function handleGetSuggestions(env) {
 // ---- 자동답장 앱 사용 이력 수집 ----
 // 번호·문구 등 개인정보는 받지 않는다. 설치 ID(무작위)·시각·이벤트 코드만 저장한다.
 // KV 쓰기 한도를 아끼려고 설치 ID+날짜 별 하나의 키에 이벤트 목록을 이어 붙인다.
-const AR_TOKEN = "REDACTED";
 const AR_MAX_BODY = 8192;
 const AR_MAX_EVENTS_PER_DAY = 400;
 const AR_TTL_SECONDS = 60 * 60 * 24 * 90;
 
-async function handleAutoreplyLog(request, env) {
-  if (request.headers.get("x-ar-token") !== AR_TOKEN) {
+async function handleAutoreplyLog(request, env, ctx) {
+  if (!arAuthorized(request, env)) {
     return new Response("Forbidden", { status: 403 });
+  }
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  if (await rateLimited(ctx, `arlog-ip:${ip}`, 300, 3600)) {
+    return new Response("Too many requests", { status: 429, headers: { "Retry-After": "3600" } });
   }
   const raw = await request.text();
   if (raw.length > AR_MAX_BODY) return new Response("Too large", { status: 413 });
@@ -505,6 +499,9 @@ async function handleAutoreplyLog(request, env) {
 
   const installId = String(body.i || "").slice(0, 40);
   if (!/^[A-Za-z0-9-]{8,40}$/.test(installId)) return new Response("Bad request", { status: 400 });
+  if (await rateLimited(ctx, `arlog-id:${installId}`, 60, 3600)) {
+    return new Response("Too many requests", { status: 429, headers: { "Retry-After": "3600" } });
+  }
   const events = (Array.isArray(body.e) ? body.e : []).slice(0, 100).map((ev) => ({
     t: Number(ev.t) || Date.now(),
     k: String(ev.k || "").slice(0, 40),
@@ -527,9 +524,13 @@ async function handleAutoreplyLog(request, env) {
 
 // 무제한 승인 확인: 설치 ID 가 KV(arunlock:<id>)에 등록돼 있으면 무료 건수 제한을 풀어 준다.
 // 등록은 운영자가 wrangler kv key put 으로만 한다(앱에서 스스로 풀 수 없다).
-async function handleAutoreplyUnlock(url, request, env) {
-  if (request.headers.get("x-ar-token") !== AR_TOKEN) {
+async function handleAutoreplyUnlock(url, request, env, ctx) {
+  if (!arAuthorized(request, env)) {
     return new Response("Forbidden", { status: 403 });
+  }
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  if (await rateLimited(ctx, `arunlock-ip:${ip}`, 300, 3600)) {
+    return new Response("Too many requests", { status: 429, headers: { "Retry-After": "3600" } });
   }
   const id = String(url.searchParams.get("i") || "");
   if (!/^[A-Za-z0-9-]{8,40}$/.test(id)) return new Response("Bad request", { status: 400 });
@@ -543,7 +544,7 @@ async function handleAutoreplyUnlock(url, request, env) {
 // 해제 코드 입력: 운영자가 만든 코드(arcode:<코드>)를 입력하면 그 설치 ID 가 무제한으로 등록된다.
 // 코드는 사용 횟수(maxUses)가 있고, 누가(이메일) 받은 코드인지 기록한다. 코드 오입력은 느리게 막는다.
 async function handleAutoreplyRedeem(request, env) {
-  if (request.headers.get("x-ar-token") !== AR_TOKEN) return new Response("Forbidden", { status: 403 });
+  if (!arAuthorized(request, env)) return new Response("Forbidden", { status: 403 });
   let body;
   try { body = JSON.parse(await request.text()); } catch { return new Response("Bad request", { status: 400 }); }
   const id = String(body.i || "");
