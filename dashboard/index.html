@@ -29,7 +29,7 @@
     .bar { fill: #7c5cff; }
     .bar:hover { fill: #ff5c9e; }
     .axis { stroke: #2f2f2f; }
-    .tick { fill: #777; font-size: 10px; }
+    .tick { fill: #777; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
     th, td { text-align: right; padding: 8px 6px; border-bottom: 1px solid #242424; white-space: nowrap; }
     th:first-child, td:first-child { text-align: left; white-space: normal; }
@@ -52,6 +52,13 @@
     .detail-grid { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; font-size: 0.82rem; color: #aaa; }
     .detail-grid b { display: block; color: #e8e8e8; font-size: 1rem; }
     .note { color: #777; font-size: 0.76rem; margin-top: 8px; }
+    .detail-grid > div { min-width: 0; }
+    @media (max-width: 480px) {
+      body { padding: 24px 16px 48px; }
+      .hide-sm { display: none; }
+      th, td { padding: 8px 4px; }
+      .detail-grid { gap: 12px 16px; }
+    }
     #tip { color: #aaa; font-size: 0.8rem; min-height: 1.4em; margin-top: 6px; }
   </style>
 </head>
@@ -87,7 +94,7 @@
         <h2 id="appsTitle">앱별</h2>
         <div class="scroll">
           <table>
-            <thead><tr><th>앱</th><th>수익</th><th>이전 대비</th><th>노출</th><th>클릭</th><th>CTR</th><th>1천 노출당</th></tr></thead>
+            <thead><tr><th>앱</th><th>수익</th><th>이전 대비</th><th class="hide-sm">노출</th><th class="hide-sm">클릭</th><th class="hide-sm">CTR</th><th>1천 노출당</th></tr></thead>
             <tbody id="apps"></tbody>
           </table>
         </div>
@@ -98,7 +105,7 @@
         <h2>월별 합계</h2>
         <div class="scroll">
           <table>
-            <thead><tr><th>월</th><th>수익</th><th>전월 대비</th><th>노출</th><th>1천 노출당</th></tr></thead>
+            <thead><tr><th>월</th><th>수익</th><th>전월 대비</th><th class="hide-sm">노출</th><th>1천 노출당</th></tr></thead>
             <tbody id="months"></tbody>
           </table>
         </div>
@@ -200,10 +207,14 @@
       const cell = new Map(); // date -> Map(app->krw)
       for (const r of cur) { if (!cell.has(r.date)) cell.set(r.date, new Map()); cell.get(r.date).set(r.app, (cell.get(r.date).get(r.app) || 0) + r.krw); }
       const dayTotals = curKeys.map((k) => [...(cell.get(k) || new Map()).values()].reduce((s, v) => s + v, 0));
-      const W = 640, H = 200, padL = 8, padB = 22, padT = 8, max = Math.max(1, ...dayTotals), bw = (W - padL * 2) / curKeys.length;
+      const chart = document.getElementById('chart');
+      const px = chart.clientWidth || 640, k = 640 / px;
+      const W = 640, H = px < 500 ? 250 : 200, padL = 8, padB = Math.round(12 * Math.max(1, k) + 10), padT = 8, max = Math.max(1, ...dayTotals), bw = (W - padL * 2) / curKeys.length;
+      const tickSize = Math.max(10, Math.round(11 * k));
+      chart.setAttribute('viewBox', `0 0 ${W} ${H}`);
       const gap = bw > 6 ? 1.5 : 0.5;
       let svg = `<line class="axis" x1="${padL}" y1="${H - padB}" x2="${W - padL}" y2="${H - padB}"/>`;
-      const step = Math.max(1, Math.round(range / 6));
+      const step = Math.max(1, Math.ceil(range / Math.max(3, Math.floor(px / 80))));
       curKeys.forEach((k, i) => {
         let y = H - padB; const x = padL + i * bw;
         for (const [name] of appList) {
@@ -212,9 +223,8 @@
           svg += `<rect class="bar" data-i="${i}" x="${x + gap}" y="${y}" width="${Math.max(1, bw - gap * 2)}" height="${h}" fill="${colorOf.get(name)}"/>`;
         }
         svg += `<rect data-i="${i}" x="${x}" y="${padT}" width="${bw}" height="${H - padB - padT}" fill="transparent"/>`;
-        if ((curKeys.length - 1 - i) % step === 0) svg += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${fmtDate(k)}</text>`;
+        if ((curKeys.length - 1 - i) % step === 0) svg += `<text class="tick" font-size="${tickSize}" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${fmtDate(k)}</text>`;
       });
-      const chart = document.getElementById('chart');
       chart.innerHTML = svg;
       chart.onclick = (e) => {
         const i = e.target.dataset && e.target.dataset.i; if (i == null) return;
@@ -230,8 +240,8 @@
       const tb = document.getElementById('apps');
       tb.innerHTML = appList.map(([name, a], idx) => `
         <tr class="app-row" data-idx="${idx}" tabindex="0" role="button" aria-expanded="false"><td>${esc(name)}</td><td>${won(a.krw)}</td><td>${pctHtml(a.krw, prevByApp.get(name) || 0, hasPrev)}</td>
-        <td>${a.imps.toLocaleString()}</td><td>${a.clicks.toLocaleString()}</td>
-        <td>${a.imps ? (a.clicks / a.imps * 100).toFixed(2) : '0.00'}%</td><td>${a.imps ? won(a.krw / a.imps * 1000) : '-'}</td></tr>`).join('') ||
+        <td class="hide-sm">${a.imps.toLocaleString()}</td><td class="hide-sm">${a.clicks.toLocaleString()}</td>
+        <td class="hide-sm">${a.imps ? (a.clicks / a.imps * 100).toFixed(2) : '0.00'}%</td><td>${a.imps ? won(a.krw / a.imps * 1000) : '-'}</td></tr>`).join('') ||
         '<tr><td colspan="7">데이터가 없습니다</td></tr>';
       const toggle = (tr) => {
         const next = tr.nextElementSibling;
@@ -263,7 +273,7 @@
         const o = months.get(m), pm = mk[i + 1], po = pm ? months.get(pm) : null;
         const partial = m === monthPrefix || m === firstMonth;
         const cmp = po && !partial && pm !== firstMonth ? pctHtml(o.krw, po.krw, true) : '<span class="flat">-</span>';
-        return `<tr><td>${m.slice(0, 4)}.${m.slice(4)}${m === monthPrefix ? ' (진행 중)' : m === firstMonth ? ' (일부)' : ''}</td><td>${won(o.krw)}</td><td>${cmp}</td><td>${o.imps.toLocaleString()}</td><td>${o.imps ? won(o.krw / o.imps * 1000) : '-'}</td></tr>`;
+        return `<tr><td>${m.slice(0, 4)}.${m.slice(4)}${m === monthPrefix ? ' (진행 중)' : m === firstMonth ? ' (일부)' : ''}</td><td>${won(o.krw)}</td><td>${cmp}</td><td class="hide-sm">${o.imps.toLocaleString()}</td><td>${o.imps ? won(o.krw / o.imps * 1000) : '-'}</td></tr>`;
       }).join('') || '<tr><td colspan="5">데이터가 없습니다</td></tr>';
       document.getElementById('monthNote').textContent = ROWS.length ? `기록은 ${earliest.slice(0, 4)}.${earliest.slice(4, 6)}.${earliest.slice(6, 8)}부터 매일 자동으로 쌓입니다. 진행 중인 달과 첫 달은 일부만 포함됩니다.` : '';
     }
@@ -284,9 +294,11 @@
         const HIDDEN = ['스타스웜', 'starswarm', 'nebula', '알림보관함', 'notisaver', '한눈에일정', 'schedulewipe', '캠퍼톡', 'campertok'];
         ROWS = (data.rows || []).filter((r) => { const n = normName(r.app); return !HIDDEN.some((h) => n.includes(normName(h))); });
         try { PLAY = pRes ? ((await pRes.json()).apps || []) : []; } catch (e) { PLAY = []; }
-        render();
         state.hidden = true;
         document.getElementById('body').hidden = false;
+        render();
+        let lastW = window.innerWidth, t;
+        window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; render(); } }, 200); });
       } catch (e) {
         state.textContent = '데이터를 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.';
       }
