@@ -10,9 +10,19 @@
       "desc": "어릴 때 한 번쯤 만져봤을 그 15퍼즐을, 스테이지 100개짜리 모바일 게임으로 다시 만들고 있습니다. 엔진부터 스테이지 100개, 6개 언어 번역, 효과음까지 혼자 하나씩 붙여 나가는 중이고, 지금 비공개 테스트가 진행 중입니다. 테스터로 참여해주시는 분들 덕분에 다음 단계로 넘어갈 수 있습니다.",
       "stage": "",
       "ctas": [
-        {"label": "① 테스터 그룹 가입하기", "href": "https://groups.google.com/g/slide100"},
-        {"label": "② Play 스토어에서 설치", "href": "https://play.google.com/apps/testing/com.tide.slidepuzzle"},
-        {"label": "☕ 응원하기 (카카오페이)", "href": "https://qr.kakaopay.com/FccbK7bAr", "keep": true}
+        {
+          "label": "① 테스터 그룹 가입하기",
+          "href": "https://groups.google.com/g/slide100"
+        },
+        {
+          "label": "② Play 스토어에서 설치",
+          "href": "https://play.google.com/apps/testing/com.tide.slidepuzzle"
+        },
+        {
+          "label": "☕ 응원하기 (카카오페이)",
+          "href": "https://qr.kakaopay.com/FccbK7bAr",
+          "keep": true
+        }
       ],
       "note": "* 그룹에 가입하신 뒤 ②번을 눌러야 설치가 가능합니다. 순서를 지켜주세요. 응원하기는 카카오페이 앱이 설치된 모바일에서 열어주세요."
     },
@@ -24,18 +34,24 @@
       "sub": "내 위치 기준 실시간 미세먼지 정보 · Expo/React Native · Android",
       "desc": "한눈에 미세먼지는 내 위치를 기준으로 실시간 미세먼지·초미세먼지·대기질 정보를 확인할 수 있는 앱입니다. 잠금화면과 알림을 통해 앱을 열지 않아도 오늘의 대기질을 바로 볼 수 있어요.",
       "ctas": [
-        {"label": "테스트 참여 →", "href": "https://play.google.com/apps/testing/com.anonymous.dustywipe"}
+        {
+          "label": "테스트 참여 →",
+          "href": "https://play.google.com/apps/testing/com.anonymous.dustywipe"
+        }
       ]
     },
     {
       "id": "autoplay",
       "name": "Autoplay",
       "package": "com.chadkim.autoplay",
-      "status": "internal",
+      "status": "live",
       "sub": "블루투스 연결 시 음악 앱 자동 실행 · Flutter · Android",
       "desc": "Autoplay는 지정한 블루투스 기기(자동차, 이어폰 등)에 연결되면 원하는 음악 앱을 자동으로 실행해주는 트리거 앱입니다.",
       "ctas": [
-        {"label": "테스트 참여 →", "href": "https://play.google.com/apps/internaltest/4701744029398544851"}
+        {
+          "label": "Play 스토어에서 받기 →",
+          "href": "https://play.google.com/store/apps/details?id=com.chadkim.autoplay"
+        }
       ]
     },
     {
@@ -47,7 +63,11 @@
       "desc": "전화를 못 받았을 때 미리 정한 문구를 자동으로 문자로 보내 주는 앱입니다. 시간대 설정, 같은 번호 중복 방지, 제외 번호를 지원합니다.",
       "stage": "지금 Google Play 출시 심사 중이고, 심사가 끝나기 전에는 설치 파일(APK)로 직접 써 볼 수 있습니다.",
       "ctas": [
-        {"label": "설치 페이지 →", "href": "/autoreply/", "internal": true}
+        {
+          "label": "설치 페이지 →",
+          "href": "/autoreply/",
+          "internal": true
+        }
       ]
     },
     {
@@ -58,11 +78,51 @@
       "sub": "압박 없이 몰입하는 스도쿠 · Kotlin/Jetpack Compose · Android",
       "desc": "ZenDoku는 정답을 바로 알려주는 대신, 다음에 적용 가능한 풀이 기법을 하나씩 짚어주는 AI 코칭 힌트로 스도쿠 실력을 늘려주는 앱입니다. 타이머와 실수 카운트를 숨긴 젠 모드로 압박 없이 몰입할 수 있고, 매일 같은 퍼즐을 푸는 데일리 챌린지도 제공해요.",
       "ctas": [
-        {"label": "Play 스토어에서 받기 →", "href": "https://play.google.com/store/apps/details?id=com.zendoku.sudoku"}
+        {
+          "label": "Play 스토어에서 받기 →",
+          "href": "https://play.google.com/store/apps/details?id=com.zendoku.sudoku"
+        }
       ]
     },
-    {"id": "schedulewipe", "name": "한눈에 일정", "package": "com.hannune.schedule", "status": "discarded", "discarded_at": "2026-11-20"},
-    {"id": "starswarm", "name": "스타스웜", "package": "com.tide.starswarm", "status": "discarded", "discarded_at": "2026-11-20"},
-    {"id": "notisaver", "name": "NotiSaver", "package": "com.chadkim.notisaver.notisaver", "status": "discarded", "discarded_at": "2026-11-18"}
+    {
+      "id": "schedulewipe",
+      "name": "한눈에 일정",
+      "package": "com.hannune.schedule",
+      "status": "discarded",
+      "discarded_at": "2026-11-20"
+    },
+    {
+      "id": "starswarm",
+      "name": "스타스웜",
+      "package": "com.tide.starswarm",
+      "status": "discarded",
+      "discarded_at": "2026-11-20"
+    },
+    {
+      "id": "notisaver",
+      "name": "NotiSaver",
+      "package": "com.chadkim.notisaver.notisaver",
+      "status": "discarded",
+      "discarded_at": "2026-11-18"
+    },
+    {
+      "id": "petnote",
+      "name": "챙겨줄개",
+      "package": "com.yhchad.pet_note",
+      "status": "closed",
+      "sub": "사료 소진일·접종·병원 영수증을 알림과 달력으로 챙기는 반려동물 기록 앱 · Flutter · Android",
+      "desc": "사료가 언제 떨어질지, 다음 접종이 언제인지, 병원 영수증은 어디 뒀는지. 반려동물 키우는 집에서 자꾸 잊어버리는 일을 한 앱에서 챙기려고 만들고 있습니다. 회원가입도 광고도 없이 기록은 폰 안에만 저장됩니다. 지금 비공개 테스트를 준비 중이고, 구글 심사가 끝나면 테스터를 모십니다.",
+      "ctas": [
+        {
+          "label": "① 테스터 그룹 가입하기",
+          "href": "https://groups.google.com/g/chad-testers-a"
+        },
+        {
+          "label": "② Play 스토어에서 설치",
+          "href": "https://play.google.com/apps/testing/com.yhchad.pet_note"
+        }
+      ],
+      "stage": ""
+    }
   ]
 }

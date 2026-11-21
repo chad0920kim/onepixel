@@ -16,6 +16,17 @@ export default {
       return handleAdmobRevenue(env);
     }
 
+    if (url.pathname === "/api/admob-daily") {
+      return handleAdmobDaily(env);
+    }
+
+    if (url.pathname === "/api/play-stats") {
+      const raw = await env.SUGGESTIONS.get("play-stats");
+      return new Response(raw || JSON.stringify({ updated: null, apps: [] }), {
+        headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" }
+      });
+    }
+
     if (url.pathname === "/api/autoreply/redeem" && request.method === "POST") {
       return handleAutoreplyRedeem(request, env);
     }
@@ -87,6 +98,53 @@ async function handleAdmobRevenue(env) {
     );
   } catch (err) {
     return new Response(JSON.stringify({ error: "internal_error", detail: String(err) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+// 대시보드용: 최근 30일을 날짜 x 앱으로 쪼갠 AdMob 보고서(원화 기준).
+async function handleAdmobDaily(env) {
+  try {
+    const accessToken = await getAccessToken(env);
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    const res = await fetch(
+      `https://admob.googleapis.com/v1/accounts/${env.ADMOB_PUBLISHER_ID}/networkReport:generate`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportSpec: {
+            dateRange: { startDate: dateParts(start), endDate: dateParts(end) },
+            metrics: ["ESTIMATED_EARNINGS", "IMPRESSIONS", "CLICKS"],
+            dimensions: ["DATE", "APP"],
+            localizationSettings: { currencyCode: "KRW" }
+          }
+        })
+      }
+    );
+    if (!res.ok) throw new Error(`admob_api_error: ${await res.text()}`);
+    const rows = (await res.json())
+      .filter((chunk) => chunk.row)
+      .map((chunk) => {
+        const d = chunk.row.dimensionValues || {};
+        const m = chunk.row.metricValues || {};
+        return {
+          date: d.DATE?.value,
+          app: d.APP?.displayLabel || d.APP?.value || "알 수 없음",
+          krw: Number(m.ESTIMATED_EARNINGS?.microsValue || 0) / 1_000_000,
+          impressions: Number(m.IMPRESSIONS?.integerValue || 0),
+          clicks: Number(m.CLICKS?.integerValue || 0)
+        };
+      });
+    return new Response(JSON.stringify({ currency: "KRW", rangeDays: 30, rows }), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "internal_error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });

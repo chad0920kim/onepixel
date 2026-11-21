@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>앱 현황 대시보드 — Onepixel</title>
+  <meta name="description" content="출시한 앱의 광고 수익, 노출·클릭, 다운로드 현황.">
+  <link rel="canonical" href="https://onepixel.yhchad.com/dashboard/" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      background: #0f0f0f; color: #e8e8e8; min-height: 100vh; padding: 32px 16px 56px; line-height: 1.6;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+    .back { font-size: 0.9rem; color: #888; text-decoration: none; align-self: flex-start; }
+    .back:hover { color: #e8e8e8; }
+    h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); letter-spacing: -0.5px; }
+    h1 .g { background: linear-gradient(90deg, #7c5cff, #ff5c9e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    h2 { font-size: 1.05rem; margin-bottom: 10px; }
+    .sub { color: #888; font-size: 0.85rem; margin-top: 4px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .card { background: #151515; border: 1px solid #2a2a2a; border-radius: 12px; padding: 14px 16px; }
+    .card .k { font-size: 0.78rem; color: #999; }
+    .card .v { font-size: 1.5rem; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .card .n { font-size: 0.75rem; color: #777; margin-top: 2px; }
+    .panel { background: #151515; border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px; }
+    svg { width: 100%; height: auto; display: block; }
+    .bar { fill: #7c5cff; }
+    .bar:hover { fill: #ff5c9e; }
+    .axis { stroke: #2f2f2f; }
+    .tick { fill: #777; font-size: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: 8px 6px; border-bottom: 1px solid #242424; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; white-space: normal; }
+    th { color: #999; font-weight: 600; font-size: 0.78rem; }
+    .scroll { overflow-x: auto; }
+    .pending { color: #aaa; font-size: 0.9rem; }
+    .pending b { color: #e8e8e8; }
+    .state { color: #999; font-size: 0.9rem; }
+    #tip { color: #aaa; font-size: 0.8rem; min-height: 1.4em; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">← Onepixel</a>
+    <header>
+      <h1><span class="g">앱 현황</span> 대시보드</h1>
+      <p class="sub">AdMob 광고 수익은 최근 30일 추정치이며, 정산 금액과 다를 수 있습니다. 하루 이틀 늦게 반영됩니다.</p>
+    </header>
+
+    <div class="state" id="state">불러오는 중...</div>
+
+    <section id="body" hidden>
+      <div class="cards" id="cards"></div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>일별 광고 수익 (원)</h2>
+        <svg id="chart" viewBox="0 0 640 200" role="img" aria-label="최근 30일 일별 광고 수익 막대그래프"></svg>
+        <div id="tip">막대를 누르면 날짜별 금액이 보입니다.</div>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>앱별 (최근 30일)</h2>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>앱</th><th>수익</th><th>노출</th><th>클릭</th><th>CTR</th><th>1천 노출당</th></tr></thead>
+            <tbody id="apps"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>다운로드 · 앱 수익 (Play Console)</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>앱</th><th>기기 획득</th><th>앱 수익</th><th>월간 활성</th></tr></thead>
+          <tbody id="play"><tr><td colspan="4" class="pending">불러오는 중...</td></tr></tbody>
+        </table>
+      </div>
+      <p class="pending" id="playNote" style="margin-top:8px"></p>
+    </section>
+  </div>
+
+  <script>
+    const won = (n) => '₩' + Math.round(n).toLocaleString();
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = (d) => `${d.slice(4, 6)}/${d.slice(6, 8)}`;
+
+    (async () => {
+      const state = document.getElementById('state');
+      try {
+        const res = await fetch('/api/admob-daily');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'error');
+        const rows = data.rows;
+
+        // 날짜별 합계 (데이터 없는 날은 0으로 채움)
+        const byDate = new Map();
+        for (const r of rows) byDate.set(r.date, (byDate.get(r.date) || 0) + r.krw);
+        const days = [];
+        const t = new Date();
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date(t); d.setDate(t.getDate() - i);
+          const key = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+          days.push({ date: key, krw: byDate.get(key) || 0 });
+        }
+
+        const total = rows.reduce((s, r) => s + r.krw, 0);
+        const imps = rows.reduce((s, r) => s + r.impressions, 0);
+        const clicks = rows.reduce((s, r) => s + r.clicks, 0);
+        const last7 = days.slice(-7).reduce((s, d) => s + d.krw, 0);
+        const today = days[days.length - 1].krw;
+        const yday = days[days.length - 2].krw;
+
+        document.getElementById('cards').innerHTML = [
+          ['30일 수익', won(total), `일평균 ${won(total / 30)}`],
+          ['최근 7일', won(last7), `일평균 ${won(last7 / 7)}`],
+          ['어제 / 오늘', `${won(yday)} / ${won(today)}`, '오늘은 집계 중'],
+          ['노출 · 클릭', `${imps.toLocaleString()} · ${clicks.toLocaleString()}`, `CTR ${imps ? (clicks / imps * 100).toFixed(2) : '0.00'}%`],
+        ].map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v" style="font-size:${v.length > 14 ? '1.05rem' : '1.5rem'}">${v}</div><div class="n">${n}</div></div>`).join('');
+
+        // 막대그래프
+        const W = 640, H = 200, padL = 8, padB = 22, padT = 8;
+        const max = Math.max(1, ...days.map((d) => d.krw));
+        const bw = (W - padL * 2) / days.length;
+        let svg = `<line class="axis" x1="${padL}" y1="${H - padB}" x2="${W - padL}" y2="${H - padB}"/>`;
+        days.forEach((d, i) => {
+          const h = Math.max(d.krw > 0 ? 2 : 0, (d.krw / max) * (H - padB - padT));
+          const x = padL + i * bw;
+          svg += `<rect class="bar" data-i="${i}" x="${x + 1.5}" y="${H - padB - h}" width="${bw - 3}" height="${h}" rx="2"/>`;
+          if (i % 5 === 0 || i === days.length - 1) svg += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${fmtDate(d.date)}</text>`;
+        });
+        const chart = document.getElementById('chart');
+        chart.innerHTML = svg;
+        chart.addEventListener('click', (e) => {
+          const i = e.target.dataset && e.target.dataset.i;
+          if (i == null) return;
+          document.getElementById('tip').textContent = `${fmtDate(days[i].date)} · ${won(days[i].krw)}`;
+        });
+
+        // 앱별 표
+        const apps = new Map();
+        for (const r of rows) {
+          const a = apps.get(r.app) || { krw: 0, imps: 0, clicks: 0 };
+          a.krw += r.krw; a.imps += r.impressions; a.clicks += r.clicks;
+          apps.set(r.app, a);
+        }
+        document.getElementById('apps').innerHTML = [...apps.entries()].sort((a, b) => b[1].krw - a[1].krw).map(([name, a]) => `
+          <tr><td>${esc(name)}</td><td>${won(a.krw)}</td><td>${a.imps.toLocaleString()}</td><td>${a.clicks.toLocaleString()}</td>
+          <td>${a.imps ? (a.clicks / a.imps * 100).toFixed(2) : '0.00'}%</td><td>${a.imps ? won(a.krw / a.imps * 1000) : '-'}</td></tr>`).join('') ||
+          '<tr><td colspan="6">데이터가 없습니다</td></tr>';
+
+        state.hidden = true;
+        document.getElementById('body').hidden = false;
+      } catch (e) {
+        state.textContent = '데이터를 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.';
+      }
+    })();
+
+    (async () => {
+      const tb = document.getElementById('play'), note = document.getElementById('playNote');
+      try {
+        const d = await (await fetch('/api/play-stats')).json();
+        if (!d.apps || !d.apps.length) {
+          tb.innerHTML = '<tr><td colspan="4" class="pending">아직 수집된 값이 없습니다.</td></tr>';
+          return;
+        }
+        tb.innerHTML = d.apps.map((a) => {
+          const v = a.values || {};
+          return `<tr><td>${esc(a.name)}</td><td>${esc(v['기기 획득 수'] ?? '-')}</td><td>${esc(v['수익(KRW)'] ?? '-')}</td><td>${esc(v['월간 활성 기기'] ?? '-')}</td></tr>`;
+        }).join('');
+        note.textContent = `Play Console 홈의 지난 28일 수치입니다. "-"는 아직 데이터가 없다는 뜻입니다. 갱신: ${d.updated ? d.updated.replace('T', ' ').slice(0, 16) : '-'}`;
+      } catch (e) {
+        tb.innerHTML = '<tr><td colspan="4" class="pending">불러오지 못했습니다.</td></tr>';
+      }
+    })();
+  </script>
+</body>
+</html>
