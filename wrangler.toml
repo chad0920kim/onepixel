@@ -21,4 +21,4 @@ binding = "SUGGESTIONS"
 id = "aef5247955a449b2b2e8997ce47e78ee"
 
 [triggers]
-crons = ["30 0 * * *"]  # 매일 09:30 KST
+crons = ["30 0 * * *", "0 * * * *"]  # 09:30 KST 텔레그램 요약 + 매시 정각 기록 갱신

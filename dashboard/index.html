@@ -287,7 +287,7 @@
     (async () => {
       const state = document.getElementById('state');
       try {
-        const [hRes, pRes] = await Promise.all([fetch('/api/admob-history'), fetch('/api/play-stats').catch(() => null)]);
+        const [hRes, pRes] = await Promise.all([fetch('/api/admob-history', { cache: 'no-store' }), fetch('/api/play-stats', { cache: 'no-store' }).catch(() => null)]);
         const data = await hRes.json();
         if (!hRes.ok) throw new Error(data.error || 'error');
         // 폐기한 앱은 화면에서 뺀다(기록은 KV 에 그대로 있음). 새로 폐기하면 이름 조각을 추가.
@@ -299,6 +299,16 @@
         render();
         let lastW = window.innerWidth, t;
         window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; render(); } }, 200); });
+        // 열려 있는 동안 2분마다 새로 받아 다시 그린다(탭이 보일 때만).
+        setInterval(async () => {
+          if (document.hidden) return;
+          try {
+            const r = await fetch('/api/admob-history', { cache: 'no-store' }); if (!r.ok) return;
+            const d = await r.json();
+            ROWS = (d.rows || []).filter((x) => { const n = normName(x.app); return !HIDDEN.some((h) => n.includes(normName(h))); });
+            render();
+          } catch (e) {}
+        }, 120000);
       } catch (e) {
         state.textContent = '데이터를 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.';
       }
@@ -307,7 +317,7 @@
     (async () => {
       const tb = document.getElementById('play'), note = document.getElementById('playNote');
       try {
-        const d = await (await fetch('/api/play-stats')).json();
+        const d = await (await fetch('/api/play-stats', { cache: 'no-store' })).json();
         if (!d.apps || !d.apps.length) {
           tb.innerHTML = '<tr><td colspan="4" class="pending">아직 수집된 값이 없습니다.</td></tr>';
           return;

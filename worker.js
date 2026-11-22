@@ -14,11 +14,11 @@ export default {
 
     // AdMob 을 직접 부르는 응답은 몇 분간 엣지 캐시에 두어, 반복 호출이 AdMob 호출 한도를 소진하지 못하게 한다.
     if (url.pathname === "/api/admob-revenue") {
-      return cachedResponse(request, ctx, 600, () => handleAdmobRevenue(env));
+      return cachedResponse(request, ctx, 120, () => handleAdmobRevenue(env));
     }
 
     if (url.pathname === "/api/admob-history") {
-      return cachedResponse(request, ctx, 300, () => handleAdmobHistory(env));
+      return cachedResponse(request, ctx, 120, () => handleAdmobHistory(env));
     }
 
     if (url.pathname === "/api/play-stats") {
@@ -49,7 +49,9 @@ export default {
 
   // 매일 아침(cron): AdMob 일별 수익을 KV 에 쌓고 텔레그램으로 어제 요약·이상 징후를 보낸다.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runDailyDigest(env));
+    // 매시 정각: 최근 3일치만 갱신해 KV 에 저장. 09:30 KST(00:30 UTC)에만 텔레그램 요약까지 보낸다.
+    if (event.cron === "30 0 * * *") ctx.waitUntil(runDailyDigest(env));
+    else ctx.waitUntil(collectHistory(env, 3).catch(() => {}));
   }
 };
 
@@ -147,6 +149,20 @@ async function fetchDailyRows(env, start, end) {
     });
 }
 
+// AdMob 앱 표시 이름이 때때로 길게(스토어 제목) 바뀌어 돌아온다 → 기존 기록의 짧은 이름이 앞부분과 같으면 그 이름으로 통일.
+function canonApps(fresh, known) {
+  const names = [...new Set(known.map((r) => r.app))].sort((a, b) => b.length - a.length);
+  const key = (x) => x.toLowerCase().replace(/[\s\-_:]/g, "");
+  const ALIAS = [["오토플레이", "음악자동재생"]]; // 스토어 이름이 바뀐 앱: 새 표시 이름 → 기록에 있는 옛 이름
+  return fresh.map((r) => {
+    const k = key(r.app);
+    const al = ALIAS.find(([n]) => k.startsWith(key(n)));
+    if (al && names.includes(al[1])) return { ...r, app: al[1] };
+    const hit = names.find((n) => key(n) === k || (key(n).length >= 4 && k.startsWith(key(n))));
+    return hit ? { ...r, app: hit } : r;
+  });
+}
+
 async function loadHistory(env) {
   const raw = await env.SUGGESTIONS.get(HISTORY_KEY);
   if (!raw) return { updated: null, rows: [] };
@@ -159,8 +175,8 @@ async function loadHistory(env) {
 
 // 새로 읽은 구간을 기존 기록에 덮어쓴다(같은 날짜·앱은 최신 값으로 교체 — AdMob 은 며칠간 수치를 보정한다).
 async function collectHistory(env, days) {
-  const fresh = await fetchDailyRows(env, kstDaysAgo(days - 1), kstNow());
   const hist = await loadHistory(env);
+  const fresh = canonApps(await fetchDailyRows(env, kstDaysAgo(days - 1), kstNow()), hist.rows);
   const map = new Map(hist.rows.map((r) => [`${r.date}|${r.app}`, r]));
   const from = ymd(kstDaysAgo(days - 1));
   for (const key of [...map.keys()]) if (key.split("|")[0] >= from) map.delete(key);
@@ -175,10 +191,18 @@ async function collectHistory(env, days) {
 async function handleAdmobHistory(env) {
   try {
     let hist = await loadHistory(env);
-    // 처음 한 번은 90일치를 채운다(이후엔 매일 cron 이 갱신).
+    // 처음 한 번은 90일치를 채운다(이후엔 매시 cron 이 저장).
     if (!hist.rows.length) hist = await collectHistory(env, 90);
-    return new Response(JSON.stringify({ currency: "KRW", updated: hist.updated, rows: hist.rows }), {
-      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" }
+    // 열 때마다 최근 3일을 AdMob 에서 바로 받아 덮어쓴다(저장은 안 함). 실패하면 저장본 그대로.
+    let updated = hist.updated, rows = hist.rows;
+    try {
+      const fresh = canonApps(await fetchDailyRows(env, kstDaysAgo(2), kstNow()), rows);
+      const from = ymd(kstDaysAgo(2));
+      rows = rows.filter((r) => r.date < from).concat(fresh).sort((a, b) => (a.date < b.date ? -1 : 1));
+      updated = new Date().toISOString();
+    } catch {}
+    return new Response(JSON.stringify({ currency: "KRW", updated, rows }), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=120" }
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: "internal_error" }), {
@@ -249,11 +273,23 @@ async function sendTelegram(env, text) {
   return { ok: res.ok, status: res.status };
 }
 
+// 클리앙 글쓰기 권한(가입 30일·로그인 14회) 채우는 동안(2026-11-22~2026-12-22)만
+// 아침 요약 끝에 로그인 리마인더를 덧붙인다. 로그인은 채드님이 직접 해야 하는 일이라
+// 여기서는 알림만 보내고 아무 것도 대신 하지 않는다.
+function clienReminderLine(kstDate) {
+  const { y, m, d } = kstDate;
+  const onOrBefore = y < 2026 || (y === 2026 && (m < 12 || (m === 12 && d <= 22)));
+  if (!onOrBefore) return "";
+  return "\n\n💬 오늘 클리앙(clien.net)에 한 번 로그인해주세요 — 글쓰기 권한(가입 30일·로그인 14회) 채우는 중이에요.";
+}
+
 async function runDailyDigest(env) {
   try {
     const hist = await collectHistory(env, 14);
     const n = kstNow();
-    const { text } = buildDigest(hist.rows, { y: n.getUTCFullYear(), m: n.getUTCMonth() + 1, d: n.getUTCDate() });
+    const kstDate = { y: n.getUTCFullYear(), m: n.getUTCMonth() + 1, d: n.getUTCDate() };
+    const { text: digestText } = buildDigest(hist.rows, kstDate);
+    const text = digestText + clienReminderLine(kstDate);
     const r = await sendTelegram(env, text);
     console.log("digest", JSON.stringify(r));
   } catch (err) {
