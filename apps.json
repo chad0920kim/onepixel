@@ -55,6 +55,11 @@
         {
           "label": "Play 스토어에서 받기 →",
           "href": "https://play.google.com/store/apps/details?id=com.chadkim.autoplay"
+        },
+        {
+          "label": "소개 페이지 →",
+          "href": "/autoplay/ko/",
+          "internal": true
         }
       ]
     },
@@ -85,6 +90,11 @@
         {
           "label": "Play 스토어에서 받기 →",
           "href": "https://play.google.com/store/apps/details?id=com.zendoku.sudoku"
+        },
+        {
+          "label": "소개 페이지 →",
+          "href": "/zendoku/ko/",
+          "internal": true
         }
       ]
     },
