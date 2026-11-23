@@ -86,7 +86,8 @@ def render(code, p):
     canon = BASE + p["path"]
     alts = "\n".join(f'  <link rel="alternate" hreflang="{HREFLANG[c]}" href="{BASE}{q["path"]}">' for c, q in PAGES.items())
     alts += f'\n  <link rel="alternate" hreflang="x-default" href="{BASE}/autoplay/">'
-    shots = "\n".join(f'      <img src="/autoplay/img/{n}.jpg" alt="{a}" loading="lazy">' for n, a in zip(SHOT_FILES, p["alts"]))
+    imgdir = "/autoplay/img" if code == "ko" else f"/autoplay/img/{code}"  # ko 는 원본(한국어 화면), 그 외는 해당 언어 앱 화면
+    shots = "\n".join(f'      <img src="{imgdir}/{n}.jpg" alt="{a}" loading="lazy">' for n, a in zip(SHOT_FILES, p["alts"]))
     secs = "\n".join(f"    <h2>{h}</h2>\n    {b}" for h, b in p["secs"])
     langs = " ".join((f"<b>{q['name']}</b>" if c == code else f'<a href="{q["path"]}" hreflang="{HREFLANG[c]}">{q["name"]}</a>') for c, q in PAGES.items())
     ld = json.dumps({"@context":"https://schema.org","@type":"MobileApplication","name":"AutoPlay","applicationCategory":"MusicApplication","operatingSystem":"Android","description":p["desc"],"url":canon,"downloadUrl":PLAY,"inLanguage":HREFLANG[code],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"Onepixel","url":BASE+"/"}}, ensure_ascii=False)
@@ -105,7 +106,7 @@ def render(code, p):
   <meta property="og:type" content="website">
   <meta property="og:url" content="{canon}">
   <meta property="og:locale" content="{p['og']}">
-  <meta property="og:image" content="{BASE}/autoplay/img/1-home.png">
+  <meta property="og:image" content="{BASE}{imgdir}/1.jpg">
   <meta name="twitter:card" content="summary">
   <script type="application/ld+json">{ld}</script>
   <style>{STYLE}  </style>
