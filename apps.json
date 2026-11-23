@@ -22,6 +22,11 @@
           "label": "☕ 응원하기 (카카오페이)",
           "href": "https://qr.kakaopay.com/FccbK7bAr",
           "keep": true
+        },
+        {
+          "label": "소개 페이지 →",
+          "href": "/slidepuzzle/",
+          "internal": true
         }
       ],
       "note": "* 그룹에 가입하신 뒤 ②번을 눌러야 설치가 가능합니다. 순서를 지켜주세요. 응원하기는 카카오페이 앱이 설치된 모바일에서 열어주세요."
@@ -41,6 +46,11 @@
         {
           "label": "② Play 스토어에서 설치",
           "href": "https://play.google.com/apps/testing/com.anonymous.dustywipe"
+        },
+        {
+          "label": "소개 페이지 →",
+          "href": "/dustywipe/",
+          "internal": true
         }
       ]
     },
@@ -134,6 +144,11 @@
         {
           "label": "② Play 스토어에서 설치",
           "href": "https://play.google.com/apps/testing/com.yhchad.pet_note"
+        },
+        {
+          "label": "소개 페이지 →",
+          "href": "/petnote/",
+          "internal": true
         }
       ],
       "stage": ""
