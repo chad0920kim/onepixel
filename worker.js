@@ -339,17 +339,22 @@ async function handleAdmobRevenue(env) {
     const totalEarnings = apps.reduce((sum, a) => sum + a.earnings, 0);
     const totalEarningsKrw = apps.reduce((sum, a) => sum + a.earningsKrw, 0);
 
-    return new Response(
-      JSON.stringify({
-        currency: "USD",
-        totalEarnings,
-        totalEarningsKrw,
-        rangeDays: 30,
-        apps
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
+    const body = JSON.stringify({
+      currency: "USD",
+      totalEarnings,
+      totalEarningsKrw,
+      rangeDays: 30,
+      apps
+    });
+    // 마지막 성공값을 KV 에 보관 — AdMob/토큰 일시 오류 때 대신 내준다.
+    try { await env.SUGGESTIONS.put("admob-revenue-last", body); } catch {}
+    return new Response(body, { headers: { "Content-Type": "application/json" } });
   } catch (err) {
+    console.error("admob-revenue failed:", String(err).slice(0, 300));
+    try {
+      const last = await env.SUGGESTIONS.get("admob-revenue-last");
+      if (last) return new Response(last, { headers: { "Content-Type": "application/json", "X-Stale": "1" } });
+    } catch {}
     return new Response(JSON.stringify({ error: "internal_error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
