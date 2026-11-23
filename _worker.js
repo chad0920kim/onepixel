@@ -51,7 +51,7 @@ export default {
   async scheduled(event, env, ctx) {
     // 매시 정각: 최근 3일치만 갱신해 KV 에 저장. 09:30 KST(00:30 UTC)에만 텔레그램 요약까지 보낸다.
     if (event.cron === "30 0 * * *") ctx.waitUntil(runDailyDigest(env));
-    else ctx.waitUntil(collectHistory(env, 3).catch(() => {}));
+    else ctx.waitUntil(collectHistory(env, 7).catch(() => {}));
   }
 };
 
@@ -285,7 +285,7 @@ function clienReminderLine(kstDate) {
 
 async function runDailyDigest(env) {
   try {
-    const hist = await collectHistory(env, 14);
+    const hist = await collectHistory(env, 35);
     const n = kstNow();
     const kstDate = { y: n.getUTCFullYear(), m: n.getUTCMonth() + 1, d: n.getUTCDate() };
     const { text: digestText } = buildDigest(hist.rows, kstDate);
