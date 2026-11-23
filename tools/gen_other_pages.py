@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """출시 전(비공개 테스트) 앱 소개 페이지 생성: /slidepuzzle/(+en), /dustywipe/, /petnote/. 실행: python3 tools/gen_other_pages.py
 출시되면 CTA 를 Play 스토어 링크로 바꾸고 status 문구를 고친다."""
-import os, json, re
+import os, json, re, subprocess
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 BASE = "https://onepixel.yhchad.com"
+# 출시된 앱 id 목록(tools/released_apps.json). 여기에 넣고 다시 실행하면 CTA 가 Play 스토어 링크로, 초안 페이지가 실제 배포 폴더로 바뀐다.
+RELEASED_FILE = os.path.join(os.path.dirname(__file__), "released_apps.json")
+RELEASED = set(json.load(open(RELEASED_FILE))) if os.path.exists(RELEASED_FILE) else set()
+PACKAGES = {"petnote": "com.yhchad.pet_note", "autoreply": "com.chadkim.autoreply"}
+DRAFT_DIR = os.path.expanduser("~/Projects/callback/docs/about-page-draft")  # 출시 전 자동답장 페이지(배포 폴더 밖)
 STYLE = """
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e8e8;padding:48px 20px;line-height:1.7}
@@ -66,6 +71,19 @@ APPS = {
          ("내 기록은 내 폰에만","<p>회원가입 없이 쓸 수 있고, 입력한 기록은 폰 안에만 저장됩니다. 백업 파일로 내보내고 복원할 수 있습니다.</p>")],
    note="무료 앱이며 홈 화면에 광고가 표시될 수 있습니다. 이 앱은 기록과 알림을 돕는 도구이며 수의학적 진단이나 조언을 제공하지 않습니다. 사료 소진일은 하루 급여량이 일정하다는 가정의 추정치입니다. 비공개 테스트: ① 테스터 그룹 가입 → ② '테스터 되기'(안드로이드 폰, 14일간 사용해 주실 분)."),
  },
+ "autoreply": {
+  "ko": dict(path="/autoreply/about/", name="한국어", lang="ko", og="ko_KR", imgs=5, draft=True,
+   img_src=["01-home","02-message","03-rules","05-history","06-excluded"],
+   alts=["자동답장 홈: 작동 중 상태와 준비 상태","보낼 문구 설정","발송 시간대와 중복 방지 설정","발송 기록","제외 번호 관리"],
+   title="자동답장 – 부재중 전화에 자동으로 문자 답장 보내는 앱",
+   desc="자동답장은 전화를 받지 못했을 때 미리 정한 문구를 전화한 번호로 자동 문자 발송하는 안드로이드 앱입니다. 발송 시간대, 같은 번호 중복 방지, 제외 번호를 설정할 수 있습니다.",
+   h1="자동답장", sub="전화를 못 받았을 때, 미리 정한 문구를 자동으로 문자로 보내 주는 앱.", status="출시 심사 준비 중",
+   ctas=[],
+   secs=[("부재중 전화에 자동 문자","<p>전화가 와서 받지 못하면 미리 정해 둔 문구를 전화한 번호로 문자로 한 번 보내 줍니다. 회의나 운전 중처럼 바로 받을 수 없을 때 상대에게 알려 줄 수 있습니다.</p>"),
+         ("내가 정하는 규칙","<ul><li>보낼 문구 직접 작성</li><li>자동 발송할 시간대 지정</li><li>같은 번호에는 일정 시간 안에 중복 발송하지 않음</li><li>문자를 보내지 않을 제외 번호 등록</li><li>발송·건너뜀 기록 확인(번호는 일부 가려서 표시)</li></ul>"),
+         ("개인정보","<p>받은 문자, 통화기록, 연락처를 읽지 않습니다. 전화는 항상 그대로 통과시키며 차단·녹음하지 않습니다. 전화번호와 문구는 기기 밖으로 전송되지 않습니다.</p>")],
+   note="무료로 시작할 수 있고, 무료 건수를 다 쓰면 자동답장 Pro로 이어서 쓸 수 있습니다. 이 페이지는 출시 전 소개 초안입니다."),
+ },
 }
 def render(app, code, p, pages):
     canon = BASE + p["path"]
@@ -76,6 +94,9 @@ def render(app, code, p, pages):
     if p["imgs"]:
         shots = '    <div class="shots">\n' + "\n".join(f'      <img src="/{app}/img/{i}.jpg" alt="{a}" loading="lazy">' for i, a in zip(range(1, p["imgs"]+1), p["alts"])) + "\n    </div>\n"
     secs = "\n".join(f"    <h2>{h}</h2>\n    {b}" for h, b in p["secs"])
+    if app in RELEASED:
+        p = dict(p); p["ctas"] = [("Google Play에서 받기 →", "https://play.google.com/store/apps/details?id=" + PACKAGES[app], True)]
+        p["status"] = "Google Play에서 받을 수 있습니다"
     cta = "\n".join(f'    <a class="cta{"" if main else " alt"}" href="{h}">{l}</a>' for l, h, main in p["ctas"])
     langs = ""
     if len(pages) > 1:
@@ -116,8 +137,17 @@ def render(app, code, p, pages):
 paths = []
 for app, pages in APPS.items():
     for code, p in pages.items():
-        d = os.path.join(ROOT, p["path"].strip("/")); os.makedirs(d, exist_ok=True)
-        open(os.path.join(d, "index.html"), "w").write(render(app, code, p, pages)); paths.append(p["path"]); print("생성", p["path"])
+        draft = p.get("draft") and app not in RELEASED
+        d = DRAFT_DIR if draft else os.path.join(ROOT, p["path"].strip("/"))
+        os.makedirs(os.path.join(d, "img"), exist_ok=True)
+        for i, name in enumerate(p.get("img_src", []), 1):
+            src = os.path.expanduser(f"~/Projects/callback/store/screenshots/{name}.png")
+            subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "80", "--resampleWidth", "540", src, "--out", os.path.join(d, "img", f"{i}.jpg")], capture_output=True, check=True)
+        html = render(app, code, p, pages)
+        if p.get("img_src"): html = html.replace(f'src="/{app}/img/', f'src="{p["path"]}img/')
+        open(os.path.join(d, "index.html"), "w").write(html)
+        print(("초안 " if draft else "생성 ") + (d if draft else p["path"]))
+        if not draft: paths.append(p["path"])
 sm = os.path.join(ROOT, "sitemap.xml"); s = open(sm).read()
 for pth in paths:
     s = re.sub(r"\s*<url><loc>" + re.escape(BASE + pth) + r"</loc>.*?</url>", "", s)
