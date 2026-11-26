@@ -67,7 +67,7 @@
     <a class="back" href="/">← Onepixel</a>
     <header>
       <h1><span class="g">앱 현황</span> 대시보드</h1>
-      <p class="sub">AdMob 광고 수익은 추정치이며, 정산 금액과 다를 수 있습니다. 하루 이틀 늦게 반영됩니다.</p>
+      <p class="sub">AdMob 광고 수익은 추정치이며, 정산 금액과 다를 수 있습니다. 하루 이틀 늦게 반영됩니다. 인앱 결제는 수수료를 빼기 전 금액이며 1시간마다 갱신합니다.</p>
     </header>
 
     <div class="state" id="state">불러오는 중...</div>
@@ -94,7 +94,7 @@
         <h2 id="appsTitle">앱별</h2>
         <div class="scroll">
           <table>
-            <thead><tr><th>앱</th><th>수익</th><th>이전 대비</th><th class="hide-sm">노출</th><th class="hide-sm">클릭</th><th class="hide-sm">CTR</th><th>1천 노출당</th></tr></thead>
+            <thead><tr><th>앱</th><th>광고 수익</th><th>이전 대비</th><th class="hide-sm">노출</th><th class="hide-sm">클릭</th><th class="hide-sm">CTR</th><th>1천 노출당</th></tr></thead>
             <tbody id="apps"></tbody>
           </table>
         </div>
@@ -105,12 +105,23 @@
         <h2>월별 합계</h2>
         <div class="scroll">
           <table>
-            <thead><tr><th>월</th><th>수익</th><th>전월 대비</th><th class="hide-sm">노출</th><th>1천 노출당</th></tr></thead>
+            <thead><tr><th>월</th><th>광고</th><th>인앱</th><th>합계</th><th>전월 대비</th><th class="hide-sm">노출</th><th class="hide-sm">1천 노출당</th></tr></thead>
             <tbody id="months"></tbody>
           </table>
         </div>
         <p class="note" id="monthNote"></p>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>인앱 결제 (Play Console 주문)</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>날짜</th><th>앱</th><th>금액</th><th>상태</th></tr></thead>
+          <tbody id="orders"><tr><td colspan="4" class="pending">불러오는 중...</td></tr></tbody>
+        </table>
+      </div>
+      <p class="pending" id="orderNote" style="margin-top:8px"></p>
     </section>
 
     <section class="panel">
@@ -144,7 +155,9 @@
     const normName = (s) => String(s).toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
     const num = (v) => { const n = Number(String(v ?? '').replace(/[^0-9.]/g, '')); return Number.isFinite(n) && String(v ?? '').match(/\d/) ? n : null; };
 
-    let ROWS = [], PLAY = [], range = 30;
+    let ROWS = [], PLAY = [], ORDERS = [], ORDERS_AT = null, range = 30;
+    // 합계에 넣는 주문: 처리 완료된 원화 결제만(환불·취소·외화 제외).
+    const paid = () => ORDERS.filter((o) => o.status === '처리됨' && o.currency === 'KRW');
 
     function sparkline(vals, color) {
       const W = 220, H = 44, max = Math.max(1, ...vals), bw = W / vals.length;
@@ -172,7 +185,10 @@
       const total = sum(cur, 'krw'), prevTotal = sum(prev, 'krw');
       const imps = sum(cur, 'impressions'), clicks = sum(cur, 'clicks');
 
-      // 이번 달 누적 · 월말 예상 (어제까지 기준)
+      const iapSum = (f) => paid().filter((o) => f(o.date)).reduce((s, o) => s + o.amount, 0);
+      const iap = iapSum((d) => curSet.has(d)), prevIap = iapSum((d) => prevSet.has(d));
+
+      // 이번 달 누적 · 월말 예상 (광고는 어제까지 기준, 인앱 결제는 예상에 넣지 않고 실제 금액만 더함)
       const monthPrefix = ymd(today).slice(0, 6);
       const todayKey = ymd(today);
       const monthSum = ROWS.filter((r) => r.date.startsWith(monthPrefix) && r.date < todayKey).reduce((s, r) => s + r.krw, 0);
@@ -182,14 +198,17 @@
       const yKey = keyOf(1);
       const yday = ROWS.filter((r) => r.date === yKey).reduce((s, r) => s + r.krw, 0);
 
+      const monthIap = iapSum((d) => d.startsWith(monthPrefix));
+      const ydayIap = iapSum((d) => d === yKey);
+
       document.getElementById('rangeNote').textContent = `${curKeys[0].slice(4, 6)}/${curKeys[0].slice(6, 8)} ~ 오늘 · 오늘은 집계 중`;
       document.getElementById('chartTitle').textContent = `일별 광고 수익 (원) · 최근 ${range}일`;
-      document.getElementById('appsTitle').textContent = `앱별 (최근 ${range}일)`;
+      document.getElementById('appsTitle').textContent = `앱별 광고 (최근 ${range}일)`;
 
       document.getElementById('cards').innerHTML = [
-        [`${range}일 수익`, won(total), `<div class="delta">${pctHtml(total, prevTotal, hasPrev)} <span class="flat">직전 ${range}일 대비</span></div>`],
-        ['일평균', won(total / range), `<div class="n">어제 ${won(yday)}</div>`],
-        ['이번 달 누적', won(monthSum), `<div class="n">${projection == null ? '월말 예상은 내일부터' : '월말 예상 ' + won(projection)}</div>`],
+        [`${range}일 총수익`, won(total + iap), `<div class="delta">${pctHtml(total + iap, prevTotal + prevIap, hasPrev)} <span class="flat">직전 ${range}일 대비</span></div><div class="n">광고 ${won(total)} · 인앱 ${won(iap)}</div>`],
+        ['일평균', won((total + iap) / range), `<div class="n">어제 ${won(yday + ydayIap)}</div>`],
+        ['이번 달 누적', won(monthSum + monthIap), `<div class="n">${projection == null ? '월말 예상은 내일부터' : '월말 예상 ' + won(projection + monthIap)}</div>`],
         ['노출 · 클릭', `${imps.toLocaleString()} · ${clicks.toLocaleString()}`, `<div class="n">CTR ${imps ? (clicks / imps * 100).toFixed(2) : '0.00'}%</div>`],
       ].map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v" style="font-size:${v.length > 14 ? '1.05rem' : '1.5rem'}">${v}</div>${n}</div>`).join('');
 
@@ -267,14 +286,20 @@
       // 월별 합계
       const months = new Map();
       for (const r of ROWS) { const m = r.date.slice(0, 6); const o = months.get(m) || { krw: 0, imps: 0 }; o.krw += r.krw; o.imps += r.impressions; months.set(m, o); }
+      for (const o of paid()) { const m = o.date.slice(0, 6); if (!months.has(m)) months.set(m, { krw: 0, imps: 0 }); }
+      for (const [m, o] of months) o.iap = iapSum((d) => d.startsWith(m));
       const mk = [...months.keys()].sort().reverse();
       const firstMonth = earliest.slice(0, 6);
       document.getElementById('months').innerHTML = mk.map((m, i) => {
         const o = months.get(m), pm = mk[i + 1], po = pm ? months.get(pm) : null;
         const partial = m === monthPrefix || m === firstMonth;
-        const cmp = po && !partial && pm !== firstMonth ? pctHtml(o.krw, po.krw, true) : '<span class="flat">-</span>';
-        return `<tr><td>${m.slice(0, 4)}.${m.slice(4)}${m === monthPrefix ? ' (진행 중)' : m === firstMonth ? ' (일부)' : ''}</td><td>${won(o.krw)}</td><td>${cmp}</td><td class="hide-sm">${o.imps.toLocaleString()}</td><td>${o.imps ? won(o.krw / o.imps * 1000) : '-'}</td></tr>`;
-      }).join('') || '<tr><td colspan="5">데이터가 없습니다</td></tr>';
+        const cmp = po && !partial && pm !== firstMonth ? pctHtml(o.krw + o.iap, po.krw + po.iap, true) : '<span class="flat">-</span>';
+        return `<tr><td>${m.slice(0, 4)}.${m.slice(4)}${m === monthPrefix ? ' (진행 중)' : m === firstMonth ? ' (일부)' : ''}</td><td>${won(o.krw)}</td><td>${won(o.iap)}</td><td>${won(o.krw + o.iap)}</td><td>${cmp}</td><td class="hide-sm">${o.imps.toLocaleString()}</td><td class="hide-sm">${o.imps ? won(o.krw / o.imps * 1000) : '-'}</td></tr>`;
+      }).join('') || '<tr><td colspan="7">데이터가 없습니다</td></tr>';
+      document.getElementById('orders').innerHTML = [...ORDERS].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 20)
+        .map((o) => `<tr><td>${o.date.slice(0, 4)}.${o.date.slice(4, 6)}.${o.date.slice(6)}</td><td>${esc(o.app.split(/\(| - |:/)[0].trim())}</td><td>${o.currency === 'KRW' ? won(o.amount) : esc(o.currency + ' ' + o.amount)}</td><td>${esc(o.status)}</td></tr>`).join('') ||
+        '<tr><td colspan="4" class="pending">결제 내역이 없습니다.</td></tr>';
+      document.getElementById('orderNote').textContent = `수수료를 빼기 전 결제 금액입니다. 합계에는 "처리됨" 상태의 원화 결제만 넣습니다. 최근 20건 표시 · 갱신: ${ORDERS_AT ? ORDERS_AT.replace('T', ' ').slice(0, 16) : '-'}`;
       document.getElementById('monthNote').textContent = ROWS.length ? `기록은 ${earliest.slice(0, 4)}.${earliest.slice(4, 6)}.${earliest.slice(6, 8)}부터 매일 자동으로 쌓입니다. 진행 중인 달과 첫 달은 일부만 포함됩니다.` : '';
     }
 
@@ -293,7 +318,7 @@
         // 폐기한 앱은 화면에서 뺀다(기록은 KV 에 그대로 있음). 새로 폐기하면 이름 조각을 추가.
         const HIDDEN = ['스타스웜', 'starswarm', 'nebula', '알림보관함', 'notisaver', '한눈에일정', 'schedulewipe', '캠퍼톡', 'campertok'];
         ROWS = (data.rows || []).filter((r) => { const n = normName(r.app); return !HIDDEN.some((h) => n.includes(normName(h))); });
-        try { PLAY = pRes ? ((await pRes.json()).apps || []) : []; } catch (e) { PLAY = []; }
+        try { const p = pRes ? await pRes.json() : {}; PLAY = p.apps || []; ORDERS = p.orders || []; ORDERS_AT = p.ordersUpdated || null; } catch (e) { PLAY = []; ORDERS = []; }
         state.hidden = true;
         document.getElementById('body').hidden = false;
         render();
@@ -306,6 +331,8 @@
             const r = await fetch('/api/admob-history', { cache: 'no-store' }); if (!r.ok) return;
             const d = await r.json();
             ROWS = (d.rows || []).filter((x) => { const n = normName(x.app); return !HIDDEN.some((h) => n.includes(normName(h))); });
+            const p = await (await fetch('/api/play-stats', { cache: 'no-store' })).json();
+            ORDERS = p.orders || []; ORDERS_AT = p.ordersUpdated || null;
             render();
           } catch (e) {}
         }, 120000);
