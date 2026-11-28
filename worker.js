@@ -215,7 +215,8 @@ async function handleAdmobHistory(env) {
 const wonFmt = (n) => "₩" + Math.round(n).toLocaleString("ko-KR");
 
 // 어제 수익·비교·월 누적과 이상 징후로 텔레그램 문구를 만든다. 순수 함수(테스트하기 쉽게 분리).
-function buildDigest(rows, today) {
+// orders·ordersUpdated 는 KV "play-stats" 의 Play Console 주문(수수료 전 결제 금액, 날짜는 KST).
+function buildDigest(rows, today, orders = [], ordersUpdated = null) {
   const yKey = ymd(new Date(Date.UTC(today.y, today.m - 1, today.d - 1)));
   const sumBy = (pred) => rows.filter(pred).reduce((s, r) => s + r.krw, 0);
   const dayKey = (n) => ymd(new Date(Date.UTC(today.y, today.m - 1, today.d - n)));
@@ -230,11 +231,22 @@ function buildDigest(rows, today) {
   const dim = new Date(Date.UTC(today.y, today.m, 0)).getUTCDate();
   const projection = elapsed > 0 ? (monthSum / elapsed) * dim : null;
 
+  const paid = orders.filter((o) => o.status === "처리됨" && o.currency === "KRW");
+  const iapSum = (pred) => paid.filter(pred).reduce((s, o) => s + o.amount, 0);
+  const iapY = iapSum((o) => o.date === yKey);
+  const iapMonth = iapSum((o) => o.date.startsWith(monthPrefix) && o.date <= yKey);
+
   const warnings = [];
+  // 주문 수집은 맥에서 돈다. 오늘(KST) 한 번도 못 돌았으면 어제 결제가 빠졌을 수 있다.
+  const todayIso = `${today.y}-${String(today.m).padStart(2, "0")}-${String(today.d).padStart(2, "0")}`;
+  if (!ordersUpdated || ordersUpdated.slice(0, 10) < todayIso) {
+    const last = ordersUpdated ? ordersUpdated.replace("T", " ").slice(0, 16) : "기록 없음";
+    warnings.push(`인앱 결제는 마지막 수집(${last}) 기준이라 빠진 주문이 있을 수 있습니다.`);
+  }
   const hasY = rows.some((r) => r.date === yKey);
   if (!hasY) warnings.push("어제 AdMob 집계가 아직 없습니다(반영 지연일 수 있음).");
   if (hasY && prev7avg >= 100 && yesterday < prev7avg * 0.5) {
-    warnings.push(`어제 수익이 직전 7일 평균(${wonFmt(prev7avg)})의 절반 아래입니다.`);
+    warnings.push(`어제 광고 수익이 직전 7일 평균(${wonFmt(prev7avg)})의 절반 아래입니다.`);
   }
   const appsRecent = new Map();
   for (const r of rows) if (prev7keys.has(r.date)) appsRecent.set(r.app, (appsRecent.get(r.app) || 0) + r.impressions);
@@ -250,15 +262,19 @@ function buildDigest(rows, today) {
     head,
     "",
     "어제",
-    `· 수익 ${wonFmt(yesterday)}`,
-    `· 직전 7일 평균 대비 ${pct(yesterday, prev7avg)}`,
-    `· 지난주 같은 요일 대비 ${pct(yesterday, lastWeekSame)}`,
+    `· 총수익 ${wonFmt(yesterday + iapY)}`,
+    `· 광고 ${wonFmt(yesterday)} · 인앱 ${wonFmt(iapY)}`,
+    `· 광고, 직전 7일 평균 대비 ${pct(yesterday, prev7avg)}`,
+    `· 광고, 지난주 같은 요일 대비 ${pct(yesterday, lastWeekSame)}`,
     "",
     "이번 달",
-    `· 누적 ${wonFmt(monthSum)}`,
-    projection == null ? "· 월말 예상은 내일부터" : `· 월말 예상 ${wonFmt(projection)}`
+    `· 누적 ${wonFmt(monthSum + iapMonth)}`,
+    `· 광고 ${wonFmt(monthSum)} · 인앱 ${wonFmt(iapMonth)}`,
+    // 인앱 결제는 드물게 생겨 늘려 잡지 않고, 광고 예상에 이번 달 실제 결제만 더한다.
+    projection == null ? "· 월말 예상은 내일부터" : `· 월말 예상 ${wonFmt(projection + iapMonth)}`
   ];
   if (warnings.length) lines.push("", "확인할 점", ...warnings.map((w) => `· ${w}`));
+  lines.push("", "인앱 결제는 수수료를 빼기 전 금액입니다.");
   lines.push("", "상세: https://onepixel.yhchad.com/dashboard/");
   return { text: lines.join("\n"), warnings };
 }
@@ -288,7 +304,9 @@ async function runDailyDigest(env) {
     const hist = await collectHistory(env, 35);
     const n = kstNow();
     const kstDate = { y: n.getUTCFullYear(), m: n.getUTCMonth() + 1, d: n.getUTCDate() };
-    const { text: digestText } = buildDigest(hist.rows, kstDate);
+    // 주문을 못 읽어도 광고 요약은 보낸다(경고 문구가 붙는다).
+    const play = (await env.SUGGESTIONS.get("play-stats", "json").catch(() => null)) || {};
+    const { text: digestText } = buildDigest(hist.rows, kstDate, play.orders || [], play.ordersUpdated || null);
     const text = digestText + clienReminderLine(kstDate);
     const r = await sendTelegram(env, text);
     console.log("digest", JSON.stringify(r));
